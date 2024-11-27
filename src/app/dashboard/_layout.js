@@ -36,34 +36,6 @@ export default function DrawerLayout() {
         />
 
         <Drawer.Screen
-          name="Reminder"
-          options={{
-            drawerLabel: 'Reminder',
-            title: 'Reminder',
-            drawerIcon: ({ focused }) => (
-              <MaterialCommunityIcons
-                name={focused ? 'clock' : 'clock-outline'}
-                size={20}
-              />
-            ),
-          }}
-        />
-
-        <Drawer.Screen
-          name="Language"
-          options={{
-            drawerLabel: 'Language',
-            title: 'Language',
-            drawerIcon: ({ focused }) => (
-              <MaterialCommunityIcons
-                name={focused ? 'circle-outline' : 'earth'}
-                size={20}
-              />
-            ),
-          }}
-        />
-
-        <Drawer.Screen
           name="Activity"
           options={{
             drawerLabel: 'Activity',
@@ -91,19 +63,6 @@ export default function DrawerLayout() {
           }}
         />
 
-        <Drawer.Screen
-          name="Report Problem"
-          options={{
-            drawerLabel: 'Report Problem',
-            title: 'Report Problem',
-            drawerIcon: ({ focused }) => (
-              <MaterialCommunityIcons
-                name={focused ? 'alert-circle' : 'alert-circle-outline'}
-                size={20}
-              />
-            ),
-          }}
-        />
 
         <Drawer.Screen
           name="FAQs"
@@ -120,13 +79,13 @@ export default function DrawerLayout() {
         />
 
         <Drawer.Screen
-          name="ReportProblem"
+          name="AboutUs"
           options={{
-            drawerLabel: 'Report Problem',
-            title: 'Report Problem',
+            drawerLabel: 'About Us',
+            title: 'About Us',
             drawerIcon: ({ focused }) => (
               <MaterialCommunityIcons
-                name={focused ? 'alert' : 'alert-outline'}
+                name={focused ? 'information' : 'information-outline'}
                 size={20}
               />
             ),
