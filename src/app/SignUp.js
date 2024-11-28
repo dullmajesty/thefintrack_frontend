@@ -16,16 +16,16 @@ const SignUpScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Splash Image */}
+      
       <Image source={require('../assets/icon.png')} style={styles.splashImage} />
 
-      {/* Header Text */}
+      
       <Text style={styles.headerText}>Create Your{"\n"}Account</Text>
 
-      {/* White Background */}
+    
       <View style={styles.whiteBackground} />
 
-      {/* Input Fields */}
+      
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Full Name</Text>
         <TextInput
@@ -56,12 +56,12 @@ const SignUpScreen = () => {
         />
       </View>
 
-      {/* Sign Up Button */}
+      
       <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
         <Text style={styles.signUpButtonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      {/* Already have an account */}
+      
       <Text style={styles.footerText}>Already have an account?</Text>
       <TouchableOpacity style={styles.signInLink} onPress={handleSignIn}>
         <Text style={styles.signInText}>Sign In</Text>

@@ -1,28 +1,26 @@
-import { useRouter } from 'expo-router'; // Correct import for routing
+import { useRouter } from 'expo-router'; 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { BarChart } from 'react-native-chart-kit';
+import { PieChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const Home = () => {
   const router = useRouter();
 
-  // Mock data for the bar chart
-  const data = {
-    labels: ['Rent', 'Wi-Fi', 'Utilities', 'Groceries', 'Shopping', 'Allowance'],
-    datasets: [
-      {
-        data: [2000, 150, 500, 700, 500, 5000], // Example data
-      },
-    ],
-  };
+  // Pie chart data
+  const pieData = [
+    { name: 'Rent', amount: 2000, color: '#f54242', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+    { name: 'Wi-Fi', amount: 150, color: '#f5a442', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+    { name: 'Utilities', amount: 500, color: '#f5e442', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+    { name: 'Groceries', amount: 700, color: '#42f54e', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+    { name: 'Shopping', amount: 500, color: '#4287f5', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+    { name: 'Allowance', amount: 5000, color: '#a742f5', legendFontColor: '#7F7F7F', legendFontSize: 12 },
+  ];
 
-  // Function to handle navigation to the Notification page
   const handleNotificationPress = () => {
-    router.navigate('Notification'); // Correct way to navigate with expo-router
+    router.navigate('Notification'); 
   };
 
-  // Mock data for the transactions
   const transactions = [
     { id: '1', category: 'Shopping', amount: -500 },
     { id: '2', category: 'Allowance', amount: -500 },
@@ -32,7 +30,6 @@ const Home = () => {
     { id: '6', category: 'Allowance', amount: 5000 },
   ];
 
-  // Function to format amounts with color
   const formatAmount = (amount) => (
     <Text style={{ color: amount >= 0 ? 'green' : 'red', fontWeight: 'bold' }}>
       {amount > 0 ? `+${amount}` : `${amount}`}
@@ -41,38 +38,33 @@ const Home = () => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Notification Icon */}
       <TouchableOpacity style={styles.notificationContainer} onPress={handleNotificationPress}>
         <Icon name="notifications-outline" size={24} color="#000" />
       </TouchableOpacity>
 
-      {/* Bar Chart */}
       <View style={styles.chartContainer}>
-        <BarChart
-          data={data}
+        <PieChart
+          data={pieData}
           width={Dimensions.get('window').width - 32} // Dynamic width
           height={220}
-          fromZero={true}
           chartConfig={{
             backgroundColor: '#ffffff',
             backgroundGradientFrom: '#ffffff',
             backgroundGradientTo: '#ffffff',
-            decimalPlaces: 0,
             color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            barPercentage: 0.6,
           }}
-          style={styles.chart}
+          accessor="amount"
+          backgroundColor="transparent"
+          paddingLeft="15"
+          absolute
         />
       </View>
 
-      {/* Total Balance */}
       <View style={styles.balanceContainer}>
         <Text style={styles.balanceTitle}>Total Balance:</Text>
         <Text style={styles.balanceAmount}>29,220</Text>
       </View>
 
-      {/* Transactions List */}
       <Text style={styles.transactionTitle}>Transactions</Text>
       <FlatList
         data={transactions}
@@ -100,11 +92,7 @@ const styles = StyleSheet.create({
     right: 20,
   },
   chartContainer: {
-    marginTop: 60, // Adds space between the notification icon and the chart
-  },
-  chart: {
-    marginVertical: 16,
-    borderRadius: 8,
+    marginTop: 60, 
   },
   balanceContainer: {
     alignItems: 'center',

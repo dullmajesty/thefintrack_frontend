@@ -18,8 +18,8 @@ const DashboardLayout = () => {
           fontWeight: "600",
           color: "#333",
         },
-        tabBarActiveTintColor: "#ffffff",
-        tabBarInactiveTintColor: "#ffffffa0",
+        tabBarActiveTintColor: "#fffff",
+        tabBarInactiveTintColor: "#ffff",
       }}
     >
       <Tabs.Screen

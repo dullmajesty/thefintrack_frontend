@@ -20,16 +20,16 @@ const SignInScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Splash Image */}
+    
       <Image source={require('../assets/icon.png')} style={styles.splashImage} />
 
-      {/* Greeting Text */}
+      
       <Text style={styles.helloText}>Hello{"\n"}Sign in!</Text>
 
-      {/* White Background Overlay */}
+     
       <View style={styles.whiteBackground} />
 
-      {/* Input Fields */}
+    
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Gmail</Text>
         <TextInput
@@ -46,17 +46,17 @@ const SignInScreen = () => {
         />
       </View>
 
-      {/* Forgot Password */}
+     
       <TouchableOpacity style={styles.forgotPasswordContainer} onPress={handleForgotPassword}>
         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
       </TouchableOpacity>
 
-      {/* Sign In Button */}
+      
       <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
         <Text style={styles.signInButtonText}>Sign In</Text>
       </TouchableOpacity>
 
-      {/* Sign Up Section */}
+      
       <Text style={styles.dontHaveAccountText}>Don’t have an Account?</Text>
       <TouchableOpacity style={styles.signUpContainer} onPress={handleSignUp}>
         <Text style={styles.signUpText}>Sign Up</Text>
@@ -67,7 +67,7 @@ const SignInScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // Fill the screen
+    flex: 1, 
     display: 'flex',
     backgroundColor: '#61E224',
     justifyContent: 'center',

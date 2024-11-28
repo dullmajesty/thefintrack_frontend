@@ -4,31 +4,31 @@ import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router } from 'expo-router';
 
-// Get screen dimensions
+
 const { width, height } = Dimensions.get('window');
 
 export default function WelcomePage() {
   const navigation = useNavigation();
 
-  // Load custom fonts
+  
   const [loaded] = useFonts({
     Staatliches: require('../assets/Staatliches-Regular.ttf'),
     SreeKrushnadevaraya: require('../assets/SreeKrushnadevaraya-Regular.ttf'),
   });
 
   if (!loaded) {
-    return null; // Show nothing while fonts load
+    return null; 
   }
 
   return (
     <View style={styles.container}>
-      {/* Splash Icon */}
+      
       <Image
         source={require('../assets/icon.png')}
         style={styles.splashImage}
       />
 
-      {/* Title and Subtitle */}
+     
       <View style={styles.textContainer}>
         <Text style={styles.title}>FINTRACK</Text>
         <Text style={styles.subtitle}>
@@ -36,7 +36,7 @@ export default function WelcomePage() {
         </Text>
       </View>
 
-      {/* Get Started Button */}
+      
       <TouchableOpacity
         style={styles.buttonContainer}
         onPress={() => router.navigate('Create')}

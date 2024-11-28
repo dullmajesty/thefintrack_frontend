@@ -13,18 +13,17 @@ const ForgotPasswordScreen = () => {
       return;
     }
 
-    // Simulate sending a password reset email
-    // Here you can integrate your password reset logic (e.g., Firebase, backend API, etc.)
+    
     Alert.alert('Success', 'A password reset link has been sent to your email.');
-    router.navigate('SignIn'); // Navigate back to SignIn screen after reset
+    router.navigate('SignIn'); 
   };
 
   return (
     <View style={styles.container}>
-      {/* Header Text */}
+     
       <Text style={styles.headerText}>Forgot Password</Text>
 
-      {/* Email Input */}
+     
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Enter your Gmail</Text>
         <TextInput
@@ -37,12 +36,12 @@ const ForgotPasswordScreen = () => {
         />
       </View>
 
-      {/* Reset Button */}
+     
       <TouchableOpacity style={styles.resetButton} onPress={handleResetPassword}>
         <Text style={styles.resetButtonText}>Send Reset Link</Text>
       </TouchableOpacity>
 
-      {/* Go back to Sign In */}
+ 
       <TouchableOpacity onPress={() => router.navigate()} style={styles.goBackLink}>
         <Text style={styles.goBackText}>Back to Sign In</Text>
       </TouchableOpacity>

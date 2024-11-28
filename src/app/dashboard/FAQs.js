@@ -18,10 +18,10 @@ const FAQs = () => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Title */}
+    
       <Text style={styles.title}>FAQs</Text>
       
-      {/* FAQ Items */}
+    
       {faqs.map((faq, index) => (
         <View key={index} style={styles.faqItem}>
           <TouchableOpacity onPress={() => toggleExpand(index)} style={styles.questionContainer}>
@@ -35,7 +35,7 @@ const FAQs = () => {
         </View>
       ))}
 
-      {/* Contact Section */}
+      
       <View style={styles.contactSection}>
         <Text style={styles.contactText}>
           Didn't find your answer? 

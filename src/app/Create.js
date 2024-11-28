@@ -7,17 +7,17 @@ const { width, height } = Dimensions.get('window');
 const Create = () => {
   return (
     <View style={styles.container}>
-      {/* Logo Section */}
+     
       <Image
         source={require('../assets/icon.png')}
         style={styles.splashImage}
       />
       <Text style={styles.fintrackText}>FINTRACK</Text>
 
-      {/* Welcome Back Text */}
+    
       <Text style={styles.welcomeBackText}>Welcome Back!</Text>
 
-      {/* Sign In and Sign Up Buttons */}
+     
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.signInButton]}
@@ -34,7 +34,7 @@ const Create = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Motivational Text */}
+     
       <Text style={styles.trackOrStayText}>
         Track or Stay Broke.{'\n'}Losers pick the second option.
       </Text>

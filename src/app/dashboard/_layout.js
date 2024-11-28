@@ -50,21 +50,6 @@ export default function DrawerLayout() {
         />
 
         <Drawer.Screen
-          name="SendFeedback"
-          options={{
-            drawerLabel: 'Send Feedback',
-            title: 'Send Feedback',
-            drawerIcon: ({ focused }) => (
-              <MaterialCommunityIcons
-                name={focused ? 'send' : 'send-outline'}
-                size={20}
-              />
-            ),
-          }}
-        />
-
-
-        <Drawer.Screen
           name="FAQs"
           options={{
             drawerLabel: 'FAQs',
