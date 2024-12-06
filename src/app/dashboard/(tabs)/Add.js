@@ -11,7 +11,6 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-
 const Add = () => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [date, setDate] = useState('');
@@ -31,7 +30,6 @@ const Add = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false); // For dropdown visibility
 
-
   const categoryColors = {
     Groceries: '#DFD5FB',
     Rent: '#F9C3C5',
@@ -41,19 +39,15 @@ const Add = () => {
     Default: '#EEE',
   };
 
-
   const toggleModal = () => {
     setModalVisible(!isModalVisible);
   };
-
-
 
 
   const handleDelete = (index) => {
     const updatedTransactions = transactions.filter((_, i) => i !== index);
     setTransactions(updatedTransactions);
   };
-
 
   const handleEdit = (index) => {
     const transaction = transactions[index];
@@ -64,7 +58,6 @@ const Add = () => {
     setEditIndex(index);
     toggleModal();
   };
-
 
   const handleSave = () => {
     if (date && title && amount && (type === 'Income' || selectedCategory)) {
@@ -77,7 +70,6 @@ const Add = () => {
         color: type === 'Expense' ? categoryColors[selectedCategory] || categoryColors.Default : categoryColors.Default,
       };
 
-
       if (editIndex !== null) {
         const updatedTransactions = [...transactions];
         updatedTransactions[editIndex] = newTransaction;
@@ -86,7 +78,6 @@ const Add = () => {
       } else {
         setTransactions([newTransaction, ...transactions]);
       }
-
 
       // Reset input fields
       setDate('');
@@ -100,14 +91,13 @@ const Add = () => {
     }
   };
 
-
   const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate.toLocaleDateString());
-    }
-  };
-
+  setShowDatePicker(false);
+  if (selectedDate) {
+    const formattedDate = selectedDate.toLocaleDateString();
+    setDate(formattedDate);
+  }
+};
 
   return (
     <View style={styles.container}>
@@ -121,7 +111,6 @@ const Add = () => {
         </TouchableOpacity>
       </View>
 
-
       {/* Transactions List */}
       {/* Last Added Section */}
       <ScrollView style={styles.transactionsContainer}>
@@ -134,7 +123,6 @@ const Add = () => {
               key={index}
               style={styles.transactionItem}>
 
-
             {/* Category Color Square */}
             <View
                   style={[
@@ -142,7 +130,6 @@ const Add = () => {
                     { backgroundColor: transaction.color || categoryColors.Default },
                   ]}
                 />
-
 
               <Text style={styles.transactionText}>
                 {transaction.title}
@@ -165,8 +152,6 @@ const Add = () => {
       </ScrollView>
 
 
-
-
       {/* Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
@@ -176,12 +161,11 @@ const Add = () => {
             </Text>
 
 
-            {/* Date */}
-            {/* Date */}
+                    {/* Date */}
 <Text style={styles.label}>Select Date:</Text>
-<View style={styles.row}>
+<View style={styles.datePickerContainer}>
   <TextInput
-    style={[styles.input, { flex: 1 }]}
+    style={styles.dateInput}
     placeholder="mm/dd/yyyy"
     value={date}
     editable={false} // Read-only, as the date is picked using the calendar
@@ -196,12 +180,11 @@ const Add = () => {
     <DateTimePicker
       value={date ? new Date(date) : new Date()} // Default to current date
       mode="date"
-      display="default"
+      display="spinner"
       onChange={handleDateChange} // Handle date selection
     />
   )}
 </View>
-
 
 
 
@@ -234,7 +217,6 @@ const Add = () => {
               </View>
             )}
 
-
             {/* Title */}
             <Text style={styles.label}>Title:</Text>
             <TextInput
@@ -243,7 +225,6 @@ const Add = () => {
               value={title}
               onChangeText={setTitle}
             />
-
 
             {/* Amount */}
             <Text style={styles.label}>Amount:</Text>
@@ -254,7 +235,6 @@ const Add = () => {
               onChangeText={setAmount}
               keyboardType="numeric"
             />
-
 
             {/* Category (only for Expense) */}
             {type === 'Expense' && (
@@ -281,8 +261,6 @@ const Add = () => {
             )}
 
 
-
-
             {/* Actions */}
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={toggleModal}>
@@ -299,9 +277,7 @@ const Add = () => {
   );
 };
 
-
 const styles = StyleSheet.create({
-
 
   container: {
     flex: 1,
@@ -349,13 +325,12 @@ const styles = StyleSheet.create({
   transactionText: {
     color: '#000',
     fontSize: 16,
-    marginRight: 200,
+    marginRight: 200, 
   },
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
     justifyContent: 'space-evenly',
-
 
   },
   transactionActions: {
@@ -481,11 +456,27 @@ const styles = StyleSheet.create({
   borderRadius: 4,  // Optional: gives rounded corners to the square
   marginRight: 15,  // Space between the square and title
 },
-
-
+datePickerContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 10,
+  padding: 10,
+  marginBottom: 20,
+  backgroundColor: '#f9f9f9',  // Soft background for the date picker
+},
+dateInput: {
+  flex: 1,
+  fontSize: 16,
+  padding: 10,
+  borderWidth: 0,
+  color: '#333',
+  backgroundColor: '#f9f9f9', // Ensure input area matches the background
+},
+iconButton: {
+  marginLeft: 10,
+},
 });
 
-
 export default Add;
-
-

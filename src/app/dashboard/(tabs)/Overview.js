@@ -135,7 +135,7 @@ const Overview = ({ navigation }) => {
 
       {/* Latest Transaction Section inside Transaction Card */}
       <View style={styles.transactionSection}>
-        <Text style={styles.transactionTitle}>Latest Transaction</Text>
+        <Text style={styles.transactionTitle}>Latest Transactions</Text>
         <View style={styles.transactionCard}>
           <View style={styles.transactionIcon} />
           <View style={styles.transactionDetails}>
