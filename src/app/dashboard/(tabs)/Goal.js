@@ -13,7 +13,7 @@ const Goal = () => {
   const goals = [
     {
       title: 'Allowance',
-      duration: '1 Month',
+      duration: '2 Month',
       amount: 8200,
       total: 10000,
       remaining: 1800,
