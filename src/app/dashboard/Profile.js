@@ -45,13 +45,20 @@ const Profile = () => {
       const selectedImageUri = result.assets[0].uri;
       setImageUri(selectedImageUri); // Set the selected image URI
 
-      // Upload the image to Supabase Storage
+      // Upload the image to Supabase
       const fileExtension = selectedImageUri.split('.').pop();
       const fileName = `${Date.now()}.${fileExtension}`;
 
-      // Upload image to the 'profile_pictures' bucket
+      // Get the authenticated user
+      const user = supabase.auth.user();  
+      if (!user) {
+        console.log('User is not authenticated');
+        return;
+      }
+
+      // Upload image to the 'profile_picture' bucket
       const { data, error } = await supabase.storage
-        .from('profile_pictures')
+        .from('profile_picture')
         .upload(fileName, selectedImageUri, { contentType: `image/${fileExtension}` });
 
       if (error) {
@@ -99,20 +106,6 @@ const Profile = () => {
           <Text style={styles.name}>{profileData.name}</Text>
           <Text style={styles.email}>{profileData.email}</Text>
         </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push('/EditProfile')} // Navigate to EditProfile screen
-          >
-            <MaterialCommunityIcons name="account-edit" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.fab}>
-          <MaterialCommunityIcons name="settings" size={30} color="#fff" />
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -174,39 +167,6 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 16,
     color: '#666',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '80%',
-    marginTop: 16,
-  },
-  button: {
-    flex: 1,
-    backgroundColor: '#007bff',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: '#007bff',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 
