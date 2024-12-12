@@ -8,32 +8,29 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
 const EditProfile = () => {
   const router = useRouter();
-  const [name, setName] = useState('John Doe');
   const [email, setEmail] = useState('johndoe@example.com');
-  const [phone, setPhone] = useState('+123 456 7890');
   const [profilePicture, setProfilePicture] = useState(null); // State for profile picture
 
   const handleSave = () => {
     Alert.alert(
       'Profile Updated',
-      `Name: ${name}\nEmail: ${email}\nPhone: ${phone}`,
+      `Email: ${email}`,
       [
         {
           text: 'OK',
-          onPress: () => router.push('/Profile'), // Navigate only after "OK" is pressed
+          onPress: () => router.push('Profile'), // Navigate only after "OK" is pressed
         },
       ],
-      { cancelable: false } // Prevent dismissal by tapping outside
+      { cancelable: false }
     );
   };
 
   const handleChangeProfilePicture = async () => {
-    // Request media library permissions
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
@@ -44,7 +41,6 @@ const EditProfile = () => {
       return;
     }
 
-    // Open image picker
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -71,14 +67,6 @@ const EditProfile = () => {
         )}
       </TouchableOpacity>
 
-      {/* Name Input */}
-      <TextInput
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-        placeholder="Enter your name"
-      />
-
       {/* Email Input */}
       <TextInput
         style={styles.input}
@@ -86,15 +74,6 @@ const EditProfile = () => {
         onChangeText={setEmail}
         placeholder="Enter your email"
         keyboardType="email-address"
-      />
-
-      {/* Phone Input */}
-      <TextInput
-        style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-        placeholder="Enter your phone number"
-        keyboardType="phone-pad"
       />
 
       {/* Save Button */}

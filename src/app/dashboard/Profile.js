@@ -1,61 +1,118 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // Import Material Community Icons
-import { useRouter } from 'expo-router';  // Import useRouter from expo-router
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../../lib/supabase'; // Ensure it's set up correctly
 
 const Profile = () => {
-  const router = useRouter(); // Initialize router for navigation
+  const router = useRouter();
+  const [profileData, setProfileData] = useState(null);
+  const [imageUri, setImageUri] = useState(null); // Track the selected image URI
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      // Fetch the user profile data from Supabase
+      const { data, error } = await supabase.from('users').select('*').limit(1).single();
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setProfileData(data);
+        setImageUri(data.profile_picture); // Set the fetched image URI
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // Function to pick an image from the device
+  const pickImage = async () => {
+    // Ask for permission to access the media library
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission to access media library is required!');
+      return;
+    }
+
+    // Launch the image picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const selectedImageUri = result.assets[0].uri;
+      setImageUri(selectedImageUri); // Set the selected image URI
+
+      // Upload the image to Supabase Storage
+      const fileExtension = selectedImageUri.split('.').pop();
+      const fileName = `${Date.now()}.${fileExtension}`;
+
+      // Upload image to the 'profile_pictures' bucket
+      const { data, error } = await supabase.storage
+        .from('profile_pictures')
+        .upload(fileName, selectedImageUri, { contentType: `image/${fileExtension}` });
+
+      if (error) {
+        console.error('Error uploading image:', error);
+      } else {
+        // Get the public URL of the uploaded image
+        const profilePictureUrl = data.publicUrl;
+
+        // Save the image URL to the user's profile in the database
+        await supabase.from('users').update({ profile_picture: profilePictureUrl }).match({ id: profileData.id });
+
+        // Update the profileData state with the new image URL
+        setProfileData((prevState) => ({ ...prevState, profile_picture: profilePictureUrl }));
+      }
+    }
+  };
+
+  if (!profileData) {
+    return (
+      <SafeAreaView style={styles.safeContainer}>
+        <View style={styles.container}>
+          <Text>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.container}>
-
-        {/* Profile background with gradient */}
         <View style={styles.profileBackground}>
-          <Image source={require('../../assets/picture.png')} style={styles.profilePicture} />
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.profilePicture} />
+          ) : (
+            <Image source={require('../../assets/DefaultProfile.jpg')} style={styles.profilePicture} />
+          )}
+
+          {/* Edit Icon to pick a new image */}
+          <TouchableOpacity style={styles.editIcon} onPress={pickImage}>
+            <MaterialCommunityIcons name="pencil" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
-        {/* Card container for user info */}
         <View style={styles.infoCard}>
-          <Text style={styles.name}>John Doe</Text>
-          <Text style={styles.email}>johndoe@example.com</Text>
+          <Text style={styles.name}>{profileData.name}</Text>
+          <Text style={styles.email}>{profileData.email}</Text>
         </View>
 
-        {/* Additional Info Section */}
-        <View style={styles.additionalInfo}>
-          <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="phone" size={20} color="#007bff" />
-            <Text style={styles.infoText}>+123 456 7890</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="map-marker" size={20} color="#007bff" />
-            <Text style={styles.infoText}>New York, USA</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <MaterialCommunityIcons name="facebook" size={20} color="#007bff" />
-            <Text style={styles.infoText}>facebook.com/johndoe</Text>
-          </View>
-        </View>
-
-        {/* Decorative Line */}
-        <View style={styles.decorativeLine} />
-
-        {/* Button Container */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => router.navigate('EditProfile')} // Navigate to EditProfile screen
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/EditProfile')} // Navigate to EditProfile screen
           >
             <MaterialCommunityIcons name="account-edit" size={20} color="#fff" />
             <Text style={styles.buttonText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Floating Action Button */}
         <TouchableOpacity style={styles.fab}>
           <MaterialCommunityIcons name="settings" size={30} color="#fff" />
         </TouchableOpacity>
-
       </View>
     </SafeAreaView>
   );
@@ -64,7 +121,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
-    backgroundColor: '#f0f4f8',  // Background color for the screen
+    backgroundColor: '#f0f4f8',
   },
   container: {
     flex: 1,
@@ -73,23 +130,31 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   profileBackground: {
-    backgroundColor: '#4CAF50', // Solid background color for profile
+    backgroundColor: '#4CAF50',
     borderRadius: 100,
     width: 140,
     height: 140,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    borderWidth: 5, // Adds border around profile image
-    borderColor: '#fff', // White border color for contrast
+    borderWidth: 5,
+    borderColor: '#fff',
   },
   profilePicture: {
     width: 120,
     height: 120,
     borderRadius: 60,
   },
+  editIcon: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: '#4CAF50',
+    borderRadius: 50,
+    padding: 8,
+  },
   infoCard: {
-    backgroundColor: '#fff',  // White card background for user info
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     width: '80%',
@@ -110,26 +175,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  additionalInfo: {
-    width: '80%',
-    marginVertical: 20,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  infoText: {
-    fontSize: 16,
-    marginLeft: 8,
-    color: '#333',
-  },
-  decorativeLine: {
-    width: '80%',
-    height: 2,
-    backgroundColor: '#ccc', // Light gray line as a separator
-    marginVertical: 20,
-  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -143,18 +188,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 8,
-    flexDirection: 'row',  // Align the icon and text
+    flexDirection: 'row',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 8,  // Space between icon and text
+    marginLeft: 8,
   },
   fab: {
     position: 'absolute',
@@ -166,10 +207,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
   },
 });
 

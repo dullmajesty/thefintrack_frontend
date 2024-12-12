@@ -1,13 +1,56 @@
-import React from 'react';
-import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { router } from 'expo-router';
+import { supabase } from '../lib/supabase'; // Adjust the path if necessary
 
 const SignUpScreen = () => {
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const navigation = useNavigation();
 
-  const handleSignUp = () => {
-    router.navigate('dashboard'); // Navigate to Main screen
+  const handleSignUp = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match!');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        Alert.alert('Sign Up Error', error.message);
+        return;
+      }
+
+      if (data.user) {
+        // Now insert the user's data into the `users` table
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([{ 
+            userid: data.user.id, 
+            name: fullName, 
+            email: email, 
+            password: password
+          }]);
+
+          if (insertError) {
+            console.error('Insert Error:', insertError); // Log the error to the console
+            Alert.alert('Error', `Failed to create user profile in the database: ${insertError.message}`);
+            return;
+          }
+
+        Alert.alert('Success', 'Account created successfully! Please verify your email.');
+        router.navigate('dashboard'); // Navigate to the dashboard or other screen
+      }
+    } catch (err) {
+      Alert.alert('Sign Up Failed', err.message || 'Unexpected error occurred.');
+    }
   };
 
   const handleSignIn = () => {
@@ -16,29 +59,29 @@ const SignUpScreen = () => {
 
   return (
     <View style={styles.container}>
-      
       <Image source={require('../assets/icon.png')} style={styles.splashImage} />
 
-      
       <Text style={styles.headerText}>Create Your{"\n"}Account</Text>
 
-    
       <View style={styles.whiteBackground} />
 
-      
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Full Name</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter your full name"
           placeholderTextColor="#000"
+          value={fullName}
+          onChangeText={setFullName}
         />
-        <Text style={styles.label}>Gmail</Text>
+        <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter your email"
           placeholderTextColor="#000"
           keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
         />
         <Text style={styles.label}>Password</Text>
         <TextInput
@@ -46,6 +89,8 @@ const SignUpScreen = () => {
           placeholder="Enter your password"
           placeholderTextColor="#000"
           secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
         <Text style={styles.label}>Confirm Password</Text>
         <TextInput
@@ -53,15 +98,15 @@ const SignUpScreen = () => {
           placeholder="Re-enter your password"
           placeholderTextColor="#000"
           secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
         />
       </View>
 
-      
       <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
         <Text style={styles.signUpButtonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      
       <Text style={styles.footerText}>Already have an account?</Text>
       <TouchableOpacity style={styles.signInLink} onPress={handleSignIn}>
         <Text style={styles.signInText}>Sign In</Text>

@@ -1,13 +1,31 @@
-import React from 'react';
-import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { supabase } from '../lib/supabase'; // Adjust the path if necessary
 
 const SignInScreen = () => {
-  const navigation = useNavigation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleSignIn = () => {
-    router.navigate('dashboard');
+  const handleSignIn = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        Alert.alert('Sign In Error', error.message);
+        return;
+      }
+
+      if (data.user) {
+        Alert.alert('Success', 'Welcome back!');
+        router.navigate('dashboard'); // Navigate to the dashboard or main screen
+      }
+    } catch (err) {
+      Alert.alert('Sign In Failed', err.message || 'Unexpected error occurred.');
+    }
   };
 
   const handleSignUp = () => {
@@ -16,26 +34,25 @@ const SignInScreen = () => {
 
   const handleForgotPassword = () => {
     router.navigate('ForgotPassword');
-};
+  };
 
   return (
     <View style={styles.container}>
-    
       <Image source={require('../assets/icon.png')} style={styles.splashImage} />
 
-      
       <Text style={styles.helloText}>Hello{"\n"}Sign in!</Text>
 
-     
       <View style={styles.whiteBackground} />
 
-    
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Gmail</Text>
+        <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter your email"
           placeholderTextColor="#000"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
         />
         <Text style={styles.label}>Password</Text>
         <TextInput
@@ -43,20 +60,19 @@ const SignInScreen = () => {
           placeholder="Enter your password"
           placeholderTextColor="#000"
           secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
       </View>
 
-     
       <TouchableOpacity style={styles.forgotPasswordContainer} onPress={handleForgotPassword}>
         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
       </TouchableOpacity>
 
-      
       <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
         <Text style={styles.signInButtonText}>Sign In</Text>
       </TouchableOpacity>
 
-      
       <Text style={styles.dontHaveAccountText}>Don’t have an Account?</Text>
       <TouchableOpacity style={styles.signUpContainer} onPress={handleSignUp}>
         <Text style={styles.signUpText}>Sign Up</Text>
@@ -67,7 +83,7 @@ const SignInScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, 
+    flex: 1,
     display: 'flex',
     backgroundColor: '#61E224',
     justifyContent: 'center',
