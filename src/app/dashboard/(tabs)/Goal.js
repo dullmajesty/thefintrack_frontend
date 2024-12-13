@@ -1,93 +1,161 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  FlatList,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  TextInput,
+  Alert,
+  RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router'; // Using router from expo-router
+import { supabase } from '../../../lib/supabase';
+import { useRouter } from 'expo-router';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Importing vector icons
 
 const Goal = () => {
-  const router = useRouter(); // Initialize router
-  const goals = [
-    {
-      title: 'Allowance',
-      duration: '2 Month',
-      amount: 8200,
-      total: 10000,
-      remaining: 1800,
-      startDate: 'April 1',
-      endDate: 'April 31',
-      description: 'School Allowance',
-      progress: 82,
-      color: '#F2D7FB',
-    },
-    {
-      title: 'Shopping',
-      duration: '3 Weeks',
-      amount: 1256,
-      total: 5000,
-      remaining: 3744,
-      startDate: 'April 15',
-      endDate: 'April 31',
-      description: 'School Allowance',
-      progress: 25.12,
-      color: '#FEE9D1',
-    },
-  ];
+  const [goals, setGoals] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingGoal, setEditingGoal] = useState(null);
+  const [savedAmount, setSavedAmount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const router = useRouter();
 
-  const handleAddGoal = () => {
-    router.push('/AddGoal');  // Navigate to the AddGoal screen
+  const fetchGoals = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('goal')
+        .select('goalid, userid, title, amount, startdate, enddate, description, createdat, savedamount')
+        .order('createdat', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching goals:', error.message);
+        return;
+      }
+
+      setGoals(data || []);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleEdit = (goal) => {
-    console.log('Editing goal:', goal);
+  const handleDeleteGoal = async (goalId) => {
+    try {
+      const { error } = await supabase
+        .from('goal')
+        .delete()
+        .eq('goalid', goalId);
+
+      if (error) {
+        Alert.alert('Error', 'Failed to delete the goal.');
+        return;
+      }
+      fetchGoals();
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
   };
 
-  const handleDelete = (goal) => {
-    console.log('Deleting goal:', goal);
+  const handleEditGoal = async (goalId, updatedSavedAmount) => {
+    try {
+      const { error } = await supabase
+        .from('goal')
+        .update({ savedamount: updatedSavedAmount })
+        .eq('goalid', goalId);
+
+      if (error) {
+        Alert.alert('Error', 'Failed to update the goal.');
+        return;
+      }
+      setEditingGoal(null);
+      fetchGoals();
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
   };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchGoals();
+    setRefreshing(false);
+  };
+
+  const renderGoalItem = ({ item }) => {
+    const remainingAmount = item.amount - (item.savedamount || 0);
+    const progress = item.savedamount && item.amount ? (item.savedamount / item.amount) * 100 : 0;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.iconContainer}>
+            <TouchableOpacity onPress={() => setEditingGoal(item.goalid)}>
+              <Icon name="edit" size={24} color="#4CAF50" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDeleteGoal(item.goalid)}>
+              <Icon name="delete" size={24} color="#f44336" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={styles.description}>{item.description}</Text>
+        <Text style={styles.date}>
+          {item.startdate} - {item.enddate}
+        </Text>
+        {editingGoal === item.goalid ? (
+          <TextInput
+            style={styles.input}
+            value={savedAmount.toString()}
+            keyboardType="numeric"
+            onChangeText={(value) => setSavedAmount(Number(value))}
+            onSubmitEditing={() => handleEditGoal(item.goalid, savedAmount)}
+          />
+        ) : (
+          <View>
+            <Text style={styles.amount}>
+              ₱{item.savedamount || 0} / ₱{item.amount}
+            </Text>
+            <Text style={styles.remaining}>
+              Remaining: ₱{remainingAmount.toFixed(2)}
+            </Text>
+          </View>
+        )}
+        <View style={styles.progressBarContainer}>
+          <View
+            style={[styles.progressBar, { width: `${progress.toFixed(1)}%` }]}
+          />
+        </View>
+        <Text style={styles.progressText}>
+          {progress.toFixed(1)}% Saved
+        </Text>
+      </View>
+    );
+  };
+
+  useEffect(() => {
+    fetchGoals();
+  }, []);
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Goal</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddGoal}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {goals.map((goal, index) => (
-          <View key={index} style={[styles.card, { backgroundColor: goal.color }]}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{goal.title}</Text>
-              <Text style={styles.cardDuration}>{goal.duration}</Text>
-            </View>
-            <Text style={styles.amountText}>
-              {goal.amount.toLocaleString()} / {goal.total.toLocaleString()}
-            </Text>
-            <Text style={styles.remainingText}>Remaining: {goal.remaining.toLocaleString()}</Text>
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBar, { width: `${goal.progress}%` }]} />
-            </View>
-            <View style={styles.cardFooter}>
-              <Text style={styles.dateText}>
-                {goal.startDate} - {goal.endDate}
-              </Text>
-              <View style={styles.actionIcons}>
-                <TouchableOpacity onPress={() => handleEdit(goal)}>
-                  <Text style={styles.editButton}>✏️</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(goal)}>
-                  <Text style={styles.deleteButton}>🗑️</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            <Text style={styles.descriptionText}>Description: {goal.description}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      <TouchableOpacity style={styles.addButton} onPress={() => router.push('/AddGoal')}>
+        <Text style={styles.addButtonText}>+ Add Goal</Text>
+      </TouchableOpacity>
+
+      {isLoading ? (
+        <Text style={styles.loadingText}>Loading goals...</Text>
+      ) : goals.length === 0 ? (
+        <Text style={styles.noGoalsText}>No goals found.</Text>
+      ) : (
+        <FlatList
+          data={goals}
+          keyExtractor={(item) => item.goalid.toString()}
+          renderItem={renderGoalItem}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        />
+      )}
     </View>
   );
 };
@@ -95,104 +163,94 @@ const Goal = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#FFF',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  scrollContainer: {
-    paddingBottom: 16,
+    padding: 20,
+    backgroundColor: '#f0f4f8', // Lighter background for modern look
   },
   card: {
+    marginBottom: 20,
+    padding: 20,
+    backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 15,
   },
   cardTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
-  },
-  cardDuration: {
-    fontSize: 14,
-    color: '#555',
-  },
-  amountText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#333',
   },
-  remainingText: {
+  iconContainer: {
+    flexDirection: 'row',
+  },
+  description: {
+    color: '#666',
     fontSize: 14,
-    color: '#888',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  progressBarContainer: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E0E0E0',
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: '#6C63FF',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  dateText: {
+  date: {
     fontSize: 12,
-    color: '#888',
+    color: '#9E9E9E',
   },
-  actionIcons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  editButton: {
+  amount: {
+    fontWeight: 'bold',
     fontSize: 16,
     color: '#4CAF50',
   },
-  deleteButton: {
-    fontSize: 16,
-    color: '#F44336',
+  remaining: {
+    fontSize: 14,
+    color: '#9E9E9E',
+    marginBottom: 10,
   },
-  descriptionText: {
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+  },
+  progressText: {
     fontSize: 12,
+    marginTop: 5,
+    color: '#4CAF50',
+  },
+  addButton: {
+    marginBottom: 20,
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  loadingText: {
+    textAlign: 'center',
     color: '#555',
+  },
+  noGoalsText: {
+    textAlign: 'center',
+    color: '#999',
+  },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#4CAF50',
+    marginBottom: 15,
+    fontSize: 16,
+    padding: 5,
+    color: '#333',
   },
 });
 
