@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  RefreshControl, // Added for pull-to-refresh
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { supabase } from '../../../lib/supabase';
 
 const Add = () => {
   const [isModalVisible, setModalVisible] = useState(false);
@@ -29,20 +31,20 @@ const Add = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false); // For dropdown visibility
+  const [isRefreshing, setIsRefreshing] = useState(false); // For refresh control
 
   const categoryColors = {
-    Groceries: '#DFD5FB',
-    Rent: '#F9C3C5',
-    Shopping: '#F2E5A1',
-    Utilities: '#E8D8F8',
-    Other: '#82addc',
+    Groceries: '#79adcc',
+    Rent: '#ffc09f',
+    Shopping: '#ffee93',
+    Utilities: '#fcf5c7',
+    Other: '#adf7b6',
     Default: '#EEE',
   };
 
   const toggleModal = () => {
     setModalVisible(!isModalVisible);
   };
-
 
   const handleDelete = (index) => {
     const updatedTransactions = transactions.filter((_, i) => i !== index);
@@ -59,7 +61,7 @@ const Add = () => {
     toggleModal();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (date && title && amount && (type === 'Income' || selectedCategory)) {
       const newTransaction = {
         date,
@@ -70,34 +72,76 @@ const Add = () => {
         color: type === 'Expense' ? categoryColors[selectedCategory] || categoryColors.Default : categoryColors.Default,
       };
 
-      if (editIndex !== null) {
-        const updatedTransactions = [...transactions];
-        updatedTransactions[editIndex] = newTransaction;
-        setTransactions(updatedTransactions);
-        setEditIndex(null);
-      } else {
-        setTransactions([newTransaction, ...transactions]);
-      }
+      try {
+        // Save to Supabase
+        const { data, error } = await supabase
+          .from('transactions')
+          .insert([newTransaction]);
 
-      // Reset input fields
-      setDate('');
-      setTitle('');
-      setAmount('');
-      setType('Expense');
-      setSelectedCategory('');
-      toggleModal();
+        if (error) {
+          console.error('Error saving transaction:', error.message);
+          alert('Error saving transaction. Please try again.');
+          return;
+        }
+
+        console.log('Transaction saved:', data);
+
+        if (editIndex !== null) {
+          const updatedTransactions = [...transactions];
+          updatedTransactions[editIndex] = newTransaction;
+          setTransactions(updatedTransactions);
+          setEditIndex(null);
+        } else {
+          setTransactions([newTransaction, ...transactions]);
+        }
+
+        // Reset input fields
+        setDate('');
+        setTitle('');
+        setAmount('');
+        setType('Expense');
+        setSelectedCategory('');
+        toggleModal();
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        alert('Unexpected error occurred. Please try again.');
+      }
     } else {
       alert('Please fill in all required fields.');
     }
   };
 
   const handleDateChange = (event, selectedDate) => {
-  setShowDatePicker(false);
-  if (selectedDate) {
-    const formattedDate = selectedDate.toLocaleDateString();
-    setDate(formattedDate);
-  }
-};
+    setShowDatePicker(false);
+    if (selectedDate) {
+      const formattedDate = selectedDate.toLocaleDateString();
+      setDate(formattedDate);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const { data, error } = await supabase.from('transactions').select('*');
+      if (error) {
+        console.error('Error fetching transactions:', error.message);
+      } else {
+        setTransactions(data);
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching transactions:', error);
+    }
+  };
+
+  // Fetch transactions when component mounts or when refreshing
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchTransactions(); // Refresh transactions
+    setIsRefreshing(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -111,31 +155,27 @@ const Add = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Transactions List */}
-      {/* Last Added Section */}
-      <ScrollView style={styles.transactionsContainer}>
+      {/* Transactions List with pull-to-refresh */}
+      <ScrollView
+        style={styles.transactionsContainer}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
         <Text style={styles.sectionTitle}>Last Added</Text>
         {transactions.length === 0 ? (
           <Text>No items added yet.</Text>
         ) : (
           transactions.map((transaction, index) => (
-            <View
-              key={index}
-              style={styles.transactionItem}>
-
-            {/* Category Color Square */}
-            <View
-                  style={[
-                    styles.categoryColorSquare,
-                    { backgroundColor: transaction.color || categoryColors.Default },
-                  ]}
-                />
-
-              <Text style={styles.transactionText}>
-                {transaction.title}
-              </Text>
+            <View key={index} style={styles.transactionItem}>
+              {/* Category Color Square */}
+              <View
+                style={[styles.categoryColorSquare, { backgroundColor: transaction.color || categoryColors.Default }]}
+              />
+              <Text style={styles.transactionText}>{transaction.title}</Text>
               <Text
-                style={[styles.transactionAmount, { color: transaction.type === 'Expense' ? 'red' : 'green' }]} >
+                style={[styles.transactionAmount, { color: transaction.type === 'Expense' ? 'red' : 'green' }]}
+              >
                 {transaction.type === 'Income' ? `+${transaction.amount}` : transaction.amount}
               </Text>
               <View style={styles.transactionActions}>
@@ -151,7 +191,6 @@ const Add = () => {
         )}
       </ScrollView>
 
-
       {/* Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
@@ -160,39 +199,37 @@ const Add = () => {
               {editIndex !== null ? 'Edit' : 'Add'}
             </Text>
 
-
-                    {/* Date */}
-<Text style={styles.label}>Select Date:</Text>
-<View style={styles.datePickerContainer}>
-  <TextInput
-    style={styles.dateInput}
-    placeholder="mm/dd/yyyy"
-    value={date}
-    editable={false} // Read-only, as the date is picked using the calendar
-  />
-  <TouchableOpacity
-    style={styles.iconButton}
-    onPress={() => setShowDatePicker(true)} // Open the date picker
-  >
-    <Icon name="calendar-outline" size={30} color="#000" />
-  </TouchableOpacity>
-  {showDatePicker && (
-    <DateTimePicker
-      value={date ? new Date(date) : new Date()} // Default to current date
-      mode="date"
-      display="spinner"
-      onChange={handleDateChange} // Handle date selection
-    />
-  )}
-</View>
-
-
+            {/* Date */}
+            <Text style={styles.label}>Select Date:</Text>
+            <View style={styles.datePickerContainer}>
+              <TextInput
+                style={styles.dateInput}
+                placeholder="mm/dd/yyyy"
+                value={date}
+                editable={false}
+              />
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Icon name="calendar-outline" size={30} color="#000" />
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date ? new Date(date) : new Date()}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                />
+              )}
+            </View>
 
             {/* Type (Dropdown) */}
             <Text style={styles.label}>Type:</Text>
             <TouchableOpacity
               style={styles.dropdown}
-              onPress={() => setShowTypeDropdown(!showTypeDropdown)}>
+              onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+            >
               <Text>{type}</Text>
               <Icon name="chevron-down-outline" size={20} />
             </TouchableOpacity>
@@ -203,7 +240,8 @@ const Add = () => {
                     setType('Expense');
                     setShowTypeDropdown(false);
                   }}
-                  style={styles.dropdownItem}>
+                  style={styles.dropdownItem}
+                >
                   <Text>Expense</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -211,7 +249,8 @@ const Add = () => {
                     setType('Income');
                     setShowTypeDropdown(false);
                   }}
-                  style={styles.dropdownItem}>
+                  style={styles.dropdownItem}
+                >
                   <Text>Income</Text>
                 </TouchableOpacity>
               </View>
@@ -260,7 +299,6 @@ const Add = () => {
               </>
             )}
 
-
             {/* Actions */}
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={toggleModal}>
@@ -269,7 +307,7 @@ const Add = () => {
               <TouchableOpacity onPress={handleSave}>
                 <Text style={styles.okButton}>Save</Text>
               </TouchableOpacity>
-            </View>
+              </View>
           </View>
         </View>
       </Modal>
@@ -315,23 +353,25 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   transactionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'row', // Keep items in a row
+    justifyContent: 'space-between', // Distribute items evenly
+    alignItems: 'center', // Vertically center items
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
+    backgroundColor: '#f9f9f9', // Optional: for better visibility
   },
   transactionText: {
+    flex: 1, // Allow text to take up remaining space
     color: '#000',
     fontSize: 16,
-    marginRight: 200, 
+    marginRight: 10, // Add space between text and amount
   },
   transactionAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    justifyContent: 'space-evenly',
-
+    textAlign: 'right', // Align amount to the right
+    color: '#000', // Default text color
   },
   transactionActions: {
     flexDirection: 'row',
