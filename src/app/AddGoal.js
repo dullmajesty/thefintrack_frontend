@@ -1,205 +1,241 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  TouchableOpacity,
   TextInput,
-  Modal,
-  Picker,
+  Alert,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
+import { supabase } from '../lib/supabase'; // Ensure correct Supabase path
+import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import Icon from 'react-native-vector-icons/Ionicons';
 
-const AddGoal = () => {
+const AddGoal = ({ onGoalAdded }) => {
+  const router = useRouter();
+  const [userID, setUserID] = useState(null);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [isButtonEnabled, setIsButtonEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
-  // For Modal
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [activeDateField, setActiveDateField] = useState('');
-  const [tempMonth, setTempMonth] = useState('');
-  const [tempDay, setTempDay] = useState('');
-  const [tempYear, setTempYear] = useState('');
+  useEffect(() => {
+    const fetchUserID = async () => {
+      const { data: user, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error fetching user:', error.message);
+        return;
+      }
+      setUserID(user?.user?.id);
+    };
 
-  const validateForm = () => {
-    if (title && amount && description && startDate && endDate) {
-      setIsButtonEnabled(true);
-    } else {
-      setIsButtonEnabled(false);
+    fetchUserID();
+  }, []);
+
+  const handleAddGoal = async () => {
+    if (!title || !amount || !startDate || !endDate || !description) {
+      Alert.alert('Error', 'Please fill in all fields.');
+      return;
+    }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+      return;
+    }
+
+    if (!userID) {
+      Alert.alert('Error', 'User ID not found. Please log in again.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('goal')
+        .insert([
+          {
+            userid: userID,
+            title: title,
+            amount: parsedAmount,
+            startdate: startDate.toISOString().split('T')[0],
+            enddate: endDate.toISOString().split('T')[0],
+            description: description,
+          },
+        ]);
+
+      if (error) {
+        console.error('Error adding goal:', error.message);
+        Alert.alert('Error', 'Failed to add goal. Please try again.');
+      } else {
+        Alert.alert('Success', 'Goal added successfully!');
+        setTitle('');
+        setAmount('');
+        setStartDate(null);
+        setEndDate(null);
+        setDescription('');
+        if (onGoalAdded) {
+          onGoalAdded();
+        }
+        router.back();
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      Alert.alert('Error', 'An unexpected error occurred.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSaveGoal = () => {
-    alert(
-      `Goal Saved:\nTitle: ${title}\nAmount: ${amount}\nStart Date: ${startDate}\nEnd Date: ${endDate}\nDescription: ${description}`
-    );
+  const handleStartDateChange = (event, selectedDate) => {
+    setShowStartDatePicker(false);
+    if (selectedDate) setStartDate(selectedDate);
   };
 
-  const handleDateSave = () => {
-    const selectedDate = `${tempMonth}/${tempDay}/${tempYear}`;
-    if (activeDateField === 'start') {
-      setStartDate(selectedDate);
-    } else if (activeDateField === 'end') {
-      setEndDate(selectedDate);
-    }
-    setShowDatePicker(false);
-    validateForm();
+  const handleEndDateChange = (event, selectedDate) => {
+    setShowEndDatePicker(false);
+    if (selectedDate) setEndDate(selectedDate);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Set Goal</Text>
-
-      {/* Title */}
-      <Text style={styles.label}>Title</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.label}>Goal Title</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter title"
         value={title}
-        onChangeText={(text) => {
-          setTitle(text);
-          validateForm();
-        }}
+        onChangeText={setTitle}
+        placeholder="Enter goal title"
+        placeholderTextColor="#aaa"
       />
 
-      {/* Amount */}
       <Text style={styles.label}>Amount</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter amount"
         value={amount}
-        onChangeText={(text) => {
-          setAmount(text);
-          validateForm();
-        }}
+        onChangeText={setAmount}
+        placeholder="Enter amount"
+        placeholderTextColor="#aaa"
         keyboardType="numeric"
       />
 
-      {/* Start Date */}
-      <Text style={styles.label}>Start Date</Text>
-      <TouchableOpacity
-        style={styles.dateInput}
-        onPress={() => {
-          setActiveDateField('start');
-          setShowDatePicker(true);
-        }}
-      >
-        <Text style={styles.dateText}>
-          {startDate || 'Select Start Date'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* End Date */}
-      <Text style={styles.label}>End Date</Text>
-      <TouchableOpacity
-        style={styles.dateInput}
-        onPress={() => {
-          setActiveDateField('end');
-          setShowDatePicker(true);
-        }}
-      >
-        <Text style={styles.dateText}>
-          {endDate || 'Select End Date'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Description */}
       <Text style={styles.label}>Description</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter description"
         value={description}
-        onChangeText={(text) => {
-          setDescription(text);
-          validateForm();
-        }}
+        onChangeText={setDescription}
+        placeholder="Enter description"
+        placeholderTextColor="#aaa"
         multiline
-      />
+      />      
 
-      {/* Save Button */}
-      <TouchableOpacity
-        onPress={handleSaveGoal}
-        style={[
-          styles.saveButton,
-          isButtonEnabled ? styles.saveButtonEnabled : styles.saveButtonDisabled,
-        ]}
-        disabled={!isButtonEnabled}
-      >
-        <Text style={styles.saveButtonText}>Set Goal</Text>
-      </TouchableOpacity>
-
-      {/* Modal for Date Picker */}
-      {showDatePicker && (
-        <Modal transparent animationType="slide">
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalHeading}>Select Date</Text>
-              <View style={styles.modalRow}>
-                <Picker
-                  selectedValue={tempMonth}
-                  style={styles.modalPicker}
-                  onValueChange={(itemValue) => setTempMonth(itemValue)}
-                >
-                  <Picker.Item label="Month" value="" />
-                  {[...Array(12).keys()].map((m) => (
-                    <Picker.Item key={m} label={(m + 1).toString()} value={m + 1} />
-                  ))}
-                </Picker>
-                <Picker
-                  selectedValue={tempDay}
-                  style={styles.modalPicker}
-                  onValueChange={(itemValue) => setTempDay(itemValue)}
-                >
-                  <Picker.Item label="Day" value="" />
-                  {[...Array(31).keys()].map((d) => (
-                    <Picker.Item key={d} label={(d + 1).toString()} value={d + 1} />
-                  ))}
-                </Picker>
-                <Picker
-                  selectedValue={tempYear}
-                  style={styles.modalPicker}
-                  onValueChange={(itemValue) => setTempYear(itemValue)}
-                >
-                  <Picker.Item label="Year" value="" />
-                  {[2024, 2025, 2026].map((y) => (
-                    <Picker.Item key={y} label={y.toString()} value={y} />
-                  ))}
-                </Picker>
-              </View>
-              <TouchableOpacity onPress={handleDateSave} style={styles.modalButton}>
-                <Text style={styles.modalButtonText}>Save Date</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+      <Text style={styles.label}>Start Date</Text>
+      <View style={styles.dateContainer}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => setShowStartDatePicker(true)}
+        >
+          <Icon name="calendar-outline" size={30} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.dateText}>{startDate ? startDate.toDateString() : 'Select Start Date'}</Text>
+      </View>
+      {showStartDatePicker && (
+        <DateTimePicker
+          value={startDate || new Date()}
+          mode="date"
+          display="spinner"
+          onChange={handleStartDateChange}
+        />
       )}
-    </View>
+
+      <Text style={styles.label}>End Date</Text>
+      <View style={styles.dateContainer}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => setShowEndDatePicker(true)}
+        >
+          <Icon name="calendar-outline" size={30} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.dateText}>{endDate ? endDate.toDateString() : 'Select End Date'}</Text>
+      </View>
+      {showEndDatePicker && (
+        <DateTimePicker
+          value={endDate || new Date()}
+          mode="date"
+          display="spinner"
+          onChange={handleEndDateChange}
+        />
+      )}
+      
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#000" />
+      ) : (
+        <TouchableOpacity style={styles.addButton} onPress={handleAddGoal}>
+          <Text style={styles.addButtonText}>Add Goal</Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#FFF' },
-  heading: { fontSize: 24, fontWeight: '600', textAlign: 'center', marginBottom: 20 },
-  label: { fontSize: 16, fontWeight: '500', marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#A8C686', borderRadius: 10, padding: 12, marginBottom: 12 },
-  dateInput: { borderWidth: 1, borderColor: '#A8C686', borderRadius: 10, padding: 12, marginBottom: 12 },
-  dateText: { fontSize: 16, color: '#444' },
-  saveButton: { paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 16 },
-  saveButtonEnabled: { backgroundColor: '#4CAF50' },
-  saveButtonDisabled: { backgroundColor: '#A8C686' },
-  saveButtonText: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
-  modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-  modalContent: { backgroundColor: '#FFF', padding: 20, borderRadius: 10, width: '80%' },
-  modalHeading: { fontSize: 18, fontWeight: '600', marginBottom: 20, textAlign: 'center' },
-  modalRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  modalPicker: { flex: 1, marginHorizontal: 5 },
-  modalButton: { marginTop: 20, backgroundColor: '#4CAF50', padding: 10, borderRadius: 10, alignItems: 'center' },
-  modalButtonText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  container: {
+    flexGrow: 1,
+    padding: 20,
+    backgroundColor: '#f9f9f9',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#000',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    color: '#000',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+  },
+  dateText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#000',
+  },
+  iconButton: {
+    alignSelf: 'flex-start',
+  },
+  addButton: {
+    backgroundColor: '#32a852',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default AddGoal;
-
-//updated
