@@ -18,7 +18,7 @@ const Profile = () => {
         console.error('Error fetching profile:', error);
       } else {
         setProfileData(data);
-        setImageUri(data.profile_picture); // Set the fetched image URI
+        setImageUri(data.profile_picture || 'https://example.com/default-profile-picture.jpg');
       }
     };
 
@@ -63,12 +63,16 @@ const Profile = () => {
 
       if (error) {
         console.error('Error uploading image:', error);
+        alert('Failed to upload image. Using default profile picture.');
+        profilePictureUrl = 'https://example.com/default-profile-picture.jpg';
       } else {
         // Get the public URL of the uploaded image
-        const profilePictureUrl = data.publicUrl;
+        profilePictureUrl = data.publicUrl;
 
         // Save the image URL to the user's profile in the database
-        await supabase.from('users').update({ profile_picture: profilePictureUrl }).match({ id: profileData.id });
+        await supabase.from('users').update({ 
+          profile_picture: profilePictureUrl || 'https://example.com/default-profile-picture.jpg',
+         }).match({ id: profileData.id });
 
         // Update the profileData state with the new image URL
         setProfileData((prevState) => ({ ...prevState, profile_picture: profilePictureUrl }));
