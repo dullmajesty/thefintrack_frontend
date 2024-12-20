@@ -46,7 +46,6 @@ const Add = () => {
     setModalVisible(!isModalVisible);
   };
 
-
   const handleDelete = async (index) => {
     try {
       const transactionToDelete = transactions[index];
@@ -77,11 +76,6 @@ const Add = () => {
       console.error('Unexpected error while deleting transaction:', error);
       alert('Unexpected error occurred. Please try again.');
     }
-
-  const handleDelete = (index) => {
-    const updatedTransactions = transactions.filter((_, i) => i !== index);
-    setTransactions(updatedTransactions);
-
   };
   
 
@@ -105,7 +99,6 @@ const Add = () => {
         category: type === 'Expense' ? selectedCategory : '',
         color: type === 'Expense' ? categoryColors[selectedCategory] || categoryColors.Default : categoryColors.Default,
       };
-
   
       try {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -157,33 +150,6 @@ const Add = () => {
         }
   
         // Reset form fields and close modal
-
-
-      try {
-        // Save to Supabase
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert([newTransaction]);
-
-        if (error) {
-          console.error('Error saving transaction:', error.message);
-          alert('Error saving transaction. Please try again.');
-          return;
-        }
-
-        console.log('Transaction saved:', data);
-
-        if (editIndex !== null) {
-          const updatedTransactions = [...transactions];
-          updatedTransactions[editIndex] = newTransaction;
-          setTransactions(updatedTransactions);
-          setEditIndex(null);
-        } else {
-          setTransactions([newTransaction, ...transactions]);
-        }
-
-        // Reset input fields
-
         setDate('');
         setTitle('');
         setAmount('');
@@ -199,7 +165,20 @@ const Add = () => {
     }
   };  
   
-  
+  // Function to trigger a notification
+const triggerNotification = (transaction) => {
+  // Push the notification to the notifications state
+  const newNotification = {
+    title: `${transaction.type} added`,
+    subtitle: `Amount: ${transaction.amount} - ${transaction.title}`,
+    time: new Date().toLocaleTimeString(),
+    amount: transaction.amount,
+    category: transaction.category,
+    color: transaction.color,
+  };
+
+  setNotifications((prevNotifications) => [...prevNotifications, newNotification]);
+};
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -211,7 +190,6 @@ const Add = () => {
 
   const fetchTransactions = async () => {
     try {
-
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         console.error('No session found.');
@@ -231,19 +209,13 @@ const Add = () => {
       }
   
       setTransactions(data);
-
-      const { data, error } = await supabase.from('transactions').select('*');
-      if (error) {
-        console.error('Error fetching transactions:', error.message);
-      } else {
-        setTransactions(data);
-      }
-
     } catch (error) {
       console.error('Unexpected error fetching transactions:', error);
     }
   };
-
+  
+  
+  
   // Fetch transactions when component mounts or when refreshing
   useEffect(() => {
     fetchTransactions();
