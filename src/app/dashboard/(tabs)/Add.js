@@ -46,10 +46,38 @@ const Add = () => {
     setModalVisible(!isModalVisible);
   };
 
-  const handleDelete = (index) => {
-    const updatedTransactions = transactions.filter((_, i) => i !== index);
-    setTransactions(updatedTransactions);
+  const handleDelete = async (index) => {
+    try {
+      const transactionToDelete = transactions[index];
+      
+      if (!transactionToDelete.id) {
+        alert('Transaction ID not found.');
+        return;
+      }
+  
+      // Delete from Supabase
+      const { data, error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transactionToDelete.id);
+  
+      if (error) {
+        console.error('Error deleting transaction:', error.message);
+        alert('Error deleting transaction. Please try again.');
+        return;
+      }
+  
+      // Remove from local state
+      const updatedTransactions = transactions.filter((_, i) => i !== index);
+      setTransactions(updatedTransactions);
+  
+      console.log('Transaction deleted successfully:', data);
+    } catch (error) {
+      console.error('Unexpected error while deleting transaction:', error);
+      alert('Unexpected error occurred. Please try again.');
+    }
   };
+  
 
   const handleEdit = (index) => {
     const transaction = transactions[index];
@@ -63,7 +91,7 @@ const Add = () => {
 
   const handleSave = async () => {
     if (date && title && amount && (type === 'Income' || selectedCategory)) {
-      const newTransaction = {
+      const updatedTransaction = {
         date,
         title,
         amount: type === 'Expense' ? `-${amount}` : `${amount}`,
@@ -71,31 +99,57 @@ const Add = () => {
         category: type === 'Expense' ? selectedCategory : '',
         color: type === 'Expense' ? categoryColors[selectedCategory] || categoryColors.Default : categoryColors.Default,
       };
-
+  
       try {
-        // Save to Supabase
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert([newTransaction]);
-
-        if (error) {
-          console.error('Error saving transaction:', error.message);
-          alert('Error saving transaction. Please try again.');
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id;
+  
+        if (!userId) {
+          alert('User not logged in.');
           return;
         }
-
-        console.log('Transaction saved:', data);
-
+  
         if (editIndex !== null) {
-          const updatedTransactions = [...transactions];
-          updatedTransactions[editIndex] = newTransaction;
-          setTransactions(updatedTransactions);
-          setEditIndex(null);
+          const transactionToEdit = transactions[editIndex];
+  
+          if (!transactionToEdit.id) {
+            alert('Transaction ID not found.');
+            return;
+          }
+  
+          const { data, error } = await supabase
+            .from('transactions')
+            .update(updatedTransaction)
+            .eq('id', transactionToEdit.id);
+  
+          if (error) {
+            console.error('Error updating transaction:', error.message);
+            alert('Error updating transaction. Please try again.');
+            return;
+          }
+  
+          console.log('Transaction updated:', data);
+  
+          // Re-fetch updated transactions from the database
+          await fetchTransactions();
         } else {
-          setTransactions([newTransaction, ...transactions]);
+          const { data, error } = await supabase
+            .from('transactions')
+            .insert([{ ...updatedTransaction, user_id: userId }]);
+  
+          if (error) {
+            console.error('Error saving transaction:', error.message);
+            alert('Error saving transaction. Please try again.');
+            return;
+          }
+  
+          console.log('Transaction saved:', data);
+  
+          // Re-fetch updated transactions from the database
+          await fetchTransactions();
         }
-
-        // Reset input fields
+  
+        // Reset form fields and close modal
         setDate('');
         setTitle('');
         setAmount('');
@@ -109,7 +163,9 @@ const Add = () => {
     } else {
       alert('Please fill in all required fields.');
     }
-  };
+  };  
+  
+  
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -121,17 +177,32 @@ const Add = () => {
 
   const fetchTransactions = async () => {
     try {
-      const { data, error } = await supabase.from('transactions').select('*');
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.error('No session found.');
+        return;
+      }
+  
+      const userId = sessionData.session.user.id;
+  
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*') // Ensure "id" is included
+        .eq('user_id', userId);
+  
       if (error) {
         console.error('Error fetching transactions:', error.message);
-      } else {
-        setTransactions(data);
+        return;
       }
+  
+      setTransactions(data);
     } catch (error) {
       console.error('Unexpected error fetching transactions:', error);
     }
   };
-
+  
+  
+  
   // Fetch transactions when component mounts or when refreshing
   useEffect(() => {
     fetchTransactions();
