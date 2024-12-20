@@ -16,6 +16,28 @@ const Home = () => {
   const fetchTransactionData = async () => {
     try {
       setRefreshing(true); // Start refreshing
+
+  
+      // Fetch the authenticated user's session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        console.error('Error fetching session or user not authenticated:', sessionError?.message);
+        setRefreshing(false);
+        return;
+      }
+  
+      const userId = sessionData.session.user.id;
+  
+      // Fetch transactions for the authenticated user
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId); // Filter by user_id
+  
+      if (error) {
+        console.error('Error fetching data from Supabase:', error);
+        setRefreshing(false);
+
       const { data, error } = await supabase
         .from('transactions')
         .select('*');
@@ -23,6 +45,7 @@ const Home = () => {
       if (error) {
         console.error('Error fetching data from Supabase:', error);
         setRefreshing(false); // End refreshing
+
         return;
       }
   
@@ -33,10 +56,21 @@ const Home = () => {
       if (Array.isArray(transactionsData)) {
         setTransactions(transactionsData);
   
+
+        // Separate income and expenses
+        const incomeTransactions = transactionsData.filter((t) => t.amount >= 0);
+        const expenseTransactions = transactionsData.filter((t) => t.amount < 0);
+  
+        // Aggregate data by category (expenses only)
+        const categories = [...new Set(expenseTransactions.map((t) => t.category))];
+        const chartData = categories.map((category) => {
+          const total = expenseTransactions
+
         // Aggregate data by category (both income and expense)
         const categories = [...new Set(transactionsData.map((t) => t.category))];
         const chartData = categories.map((category) => {
           const total = transactionsData
+
             .filter((t) => t.category === category)
             .reduce((sum, t) => sum + t.amount, 0);
           return {
@@ -48,6 +82,17 @@ const Home = () => {
           };
         });
   
+
+        // Set the chart data for expenses only
+        setPieData(chartData);
+  
+        // Calculate total income and total expenses
+        const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+        const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+  
+        // Calculate the total balance (income - expenses)
+        const totalBalance = totalIncome + totalExpenses; // Expenses are negative, so this effectively subtracts
+
         // Set the chart data
         setPieData(chartData);
   
@@ -62,6 +107,26 @@ const Home = () => {
     } finally {
       setRefreshing(false); // End refreshing
     }
+  };
+  
+  const getCategoryColor = (category) => {
+    const colors = {
+      Groceries: '#79adcc',
+      Rent: '#ffc09f',
+      Shopping: '#ffee93',
+      Utilities: '#fcf5c7',
+      Other: '#adf7b6',
+      Default: '#EEE',
+    };
+    return colors[category] || '#ccc';
+  };
+
+  useEffect(() => {
+    fetchTransactionData();
+  }, []);
+
+  const handleNotificationPress = () => {
+    router.navigate('Notification');
   };
 
   const getCategoryColor = (category) => {
@@ -107,7 +172,11 @@ const Home = () => {
       <View style={styles.chartContainer}>
         <View style={styles.pieChartWrapper}>
           <PieChart
+
+            data={pieData}  // This now contains only expense data
+
             data={pieData}  // This now contains both income and expense data
+
             width={Dimensions.get('window').width - 100} // Smaller width
             height={Dimensions.get('window').width - 200} // Same height as width for a circle
             chartConfig={{
@@ -134,7 +203,11 @@ const Home = () => {
         data={transactions}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
+
+          <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]} >
+
           <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]}>
+
             <Text style={styles.transactionCategory}>{item.category}</Text>
             {formatAmount(item.amount)}
           </View>
