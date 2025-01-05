@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  RefreshControl, // Added for pull-to-refresh
+  RefreshControl,
+  FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -18,20 +19,23 @@ const Add = () => {
   const [date, setDate] = useState('');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [type, setType] = useState('Expense'); // Default to Expense
+  const [type, setType] = useState('Expense');
   const [categories, setCategories] = useState([
     'Groceries',
     'Rent',
     'Utilities',
     'Shopping',
     'Other',
-  ]); // Default Expense categories
+  ]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [transactions, setTransactions] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTypeDropdown, setShowTypeDropdown] = useState(false); // For dropdown visibility
-  const [isRefreshing, setIsRefreshing] = useState(false); // For refresh control
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [goalList, setGoalList] = useState([]);
+  const [selectedGoal, setSelectedGoal] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showGoalDropdown, setShowGoalDropdown] = useState(false); // Separate for Goal
 
   const categoryColors = {
     Groceries: '#79adcc',
@@ -46,44 +50,35 @@ const Add = () => {
     setModalVisible(!isModalVisible);
   };
 
-
   const handleDelete = async (index) => {
     try {
       const transactionToDelete = transactions[index];
-      
+
       if (!transactionToDelete.id) {
         alert('Transaction ID not found.');
         return;
       }
-  
-      // Delete from Supabase
+
       const { data, error } = await supabase
         .from('transactions')
         .delete()
         .eq('id', transactionToDelete.id);
-  
+
       if (error) {
         console.error('Error deleting transaction:', error.message);
         alert('Error deleting transaction. Please try again.');
         return;
       }
-  
-      // Remove from local state
+
       const updatedTransactions = transactions.filter((_, i) => i !== index);
       setTransactions(updatedTransactions);
-  
+
       console.log('Transaction deleted successfully:', data);
     } catch (error) {
       console.error('Unexpected error while deleting transaction:', error);
       alert('Unexpected error occurred. Please try again.');
     }
-
-  const handleDelete = (index) => {
-    const updatedTransactions = transactions.filter((_, i) => i !== index);
-    setTransactions(updatedTransactions);
-
   };
-  
 
   const handleEdit = (index) => {
     const transaction = transactions[index];
@@ -91,79 +86,64 @@ const Add = () => {
     setTitle(transaction.title);
     setAmount(transaction.amount);
     setType(transaction.type);
+    setSelectedCategory(transaction.category);
+    setSelectedGoal(transaction.goal || '');
     setEditIndex(index);
     toggleModal();
   };
 
-  const handleSave = async () => {
-    if (date && title && amount && (type === 'Income' || selectedCategory)) {
-      const updatedTransaction = {
-        date,
-        title,
-        amount: type === 'Expense' ? `-${amount}` : `${amount}`,
-        type,
-        category: type === 'Expense' ? selectedCategory : '',
-        color: type === 'Expense' ? categoryColors[selectedCategory] || categoryColors.Default : categoryColors.Default,
-      };
+// Function to save a transaction (add or edit)
+const handleSave = async () => {
+  // Ensure all required fields are filled
+  if (date && title && amount && (type === 'Income' || selectedCategory)) {
+    // Prepare the transaction object
+    const updatedTransaction = {
+      date,
+      title,
+      amount: type === 'Expense' ? `-${amount}` : `${amount}`,
+      type,
+      category: type === 'Expense' ? selectedCategory : '',
+      goal: type === 'Expense' ? selectedGoal : null,
+      color: type === 'Expense' ? categoryColors[selectedCategory] || categoryColors.Default : categoryColors.Default,
+    };
 
-  
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-  
-        if (!userId) {
-          alert('User not logged in.');
+    try {
+      // Get the current session and user ID
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+
+      if (!userId) {
+        alert('User not logged in.');
+        return;
+      }
+
+      if (editIndex !== null) {
+        // Edit an existing transaction
+        const transactionToEdit = transactions[editIndex];
+
+        if (!transactionToEdit.id) {
+          alert('Transaction ID not found.');
           return;
         }
-  
-        if (editIndex !== null) {
-          const transactionToEdit = transactions[editIndex];
-  
-          if (!transactionToEdit.id) {
-            alert('Transaction ID not found.');
-            return;
-          }
-  
-          const { data, error } = await supabase
-            .from('transactions')
-            .update(updatedTransaction)
-            .eq('id', transactionToEdit.id);
-  
-          if (error) {
-            console.error('Error updating transaction:', error.message);
-            alert('Error updating transaction. Please try again.');
-            return;
-          }
-  
-          console.log('Transaction updated:', data);
-  
-          // Re-fetch updated transactions from the database
-          await fetchTransactions();
-        } else {
-          const { data, error } = await supabase
-            .from('transactions')
-            .insert([{ ...updatedTransaction, user_id: userId }]);
-  
-          if (error) {
-            console.error('Error saving transaction:', error.message);
-            alert('Error saving transaction. Please try again.');
-            return;
-          }
-  
-          console.log('Transaction saved:', data);
-  
-          // Re-fetch updated transactions from the database
-          await fetchTransactions();
-        }
-  
-        // Reset form fields and close modal
 
-
-      try {
-        // Save to Supabase
         const { data, error } = await supabase
           .from('transactions')
-          .insert([newTransaction]);
+          .update(updatedTransaction)
+          .eq('id', transactionToEdit.id);
+
+        if (error) {
+          console.error('Error updating transaction:', error.message);
+          alert('Error updating transaction. Please try again.');
+          return;
+        }
+
+        console.log('Transaction updated:', data);
+        await fetchTransactions();
+      } else {
+        // Add a new transaction
+        const { data, error } = await supabase
+          .from('transactions')
+          .insert([{ ...updatedTransaction, user_id: userId }]);
 
         if (error) {
           console.error('Error saving transaction:', error.message);
@@ -172,92 +152,117 @@ const Add = () => {
         }
 
         console.log('Transaction saved:', data);
+        await fetchTransactions();
+        
+        // If it's an expense with a goal, update the goal balance
+        if (updatedTransaction.goal) {
+          const selectedGoalData = goalList.find(goal => goal.title === updatedTransaction.goal);
+          if (selectedGoalData) {
+            const updatedGoalAmount = selectedGoalData.amount - amount; // Deduct the expense amount
 
-        if (editIndex !== null) {
-          const updatedTransactions = [...transactions];
-          updatedTransactions[editIndex] = newTransaction;
-          setTransactions(updatedTransactions);
-          setEditIndex(null);
-        } else {
-          setTransactions([newTransaction, ...transactions]);
+            // Update the goal in the database
+            const { data: goalData, error: goalError } = await supabase
+              .from('goal')
+              .update({ amount: updatedGoalAmount })
+              .eq('id', selectedGoalData.id);
+
+            if (goalError) {
+              console.error('Error updating goal:', goalError.message);
+            } else {
+              console.log('Goal updated:', goalData);
+              await fetchGoal(); // Refresh goal data
+            }
+          }
         }
-
-        // Reset input fields
-
-        setDate('');
-        setTitle('');
-        setAmount('');
-        setType('Expense');
-        setSelectedCategory('');
-        toggleModal();
-      } catch (error) {
-        console.error('Unexpected error:', error);
-        alert('Unexpected error occurred. Please try again.');
-      }
-    } else {
-      alert('Please fill in all required fields.');
-    }
-  };  
-  
-  
-
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      const formattedDate = selectedDate.toLocaleDateString();
-      setDate(formattedDate);
-    }
-  };
-
-  const fetchTransactions = async () => {
-    try {
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        console.error('No session found.');
-        return;
-      }
-  
-      const userId = sessionData.session.user.id;
-  
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*') // Ensure "id" is included
-        .eq('user_id', userId);
-  
-      if (error) {
-        console.error('Error fetching transactions:', error.message);
-        return;
-      }
-  
-      setTransactions(data);
-
-      const { data, error } = await supabase.from('transactions').select('*');
-      if (error) {
-        console.error('Error fetching transactions:', error.message);
-      } else {
-        setTransactions(data);
       }
 
+      // Reset form fields after saving
+      setDate('');
+      setTitle('');
+      setAmount('');
+      setType('Expense');
+      setSelectedCategory('');
+      setSelectedGoal('');
+      toggleModal();
     } catch (error) {
-      console.error('Unexpected error fetching transactions:', error);
+      console.error('Unexpected error:', error);
+      alert('Unexpected error occurred. Please try again.');
     }
-  };
+  } else {
+    alert('Please fill in all required fields.');
+  }
+};
 
-  // Fetch transactions when component mounts or when refreshing
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
 
-  const onRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchTransactions(); // Refresh transactions
-    setIsRefreshing(false);
-  };
+// Handle date change from the date picker
+const handleDateChange = (event, selectedDate) => {
+  setShowDatePicker(false);
+  if (selectedDate) {
+    const formattedDate = selectedDate.toLocaleDateString();
+    setDate(formattedDate);
+  }
+};
+
+// Fetch all transactions for the logged-in user
+const fetchTransactions = async () => {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.error('No session found.');
+      return;
+    }
+
+    const userId = sessionData.session.user.id;
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error fetching transactions:', error.message);
+      return;
+    }
+
+    setTransactions(data);
+  } catch (error) {
+    console.error('Unexpected error fetching transactions:', error);
+  }
+};
+
+// Fetch all goals
+const fetchGoal = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('goal')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching goal:', error.message);
+      return;
+    }
+
+    setGoalList(data);
+  } catch (error) {
+    console.error('Unexpected error fetching goal:', error);
+  }
+};
+
+// Refresh the transactions list
+const onRefresh = async () => {
+  setIsRefreshing(true);
+  await fetchTransactions();
+  setIsRefreshing(false);
+};
+
+// Automatically fetch data when the component mounts
+useEffect(() => {
+  fetchTransactions();
+  fetchGoal();
+}, []);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerText}>
           Know your income, track your expenses, and save smart.
@@ -267,12 +272,9 @@ const Add = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Transactions List with pull-to-refresh */}
       <ScrollView
         style={styles.transactionsContainer}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
       >
         <Text style={styles.sectionTitle}>Last Added</Text>
         {transactions.length === 0 ? (
@@ -280,7 +282,6 @@ const Add = () => {
         ) : (
           transactions.map((transaction, index) => (
             <View key={index} style={styles.transactionItem}>
-              {/* Category Color Square */}
               <View
                 style={[styles.categoryColorSquare, { backgroundColor: transaction.color || categoryColors.Default }]}
               />
@@ -303,15 +304,11 @@ const Add = () => {
         )}
       </ScrollView>
 
-      {/* Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editIndex !== null ? 'Edit' : 'Add'}
-            </Text>
+            <Text style={styles.modalTitle}>{editIndex !== null ? 'Edit' : 'Add'}</Text>
 
-            {/* Date */}
             <Text style={styles.label}>Select Date:</Text>
             <View style={styles.datePickerContainer}>
               <TextInput
@@ -320,10 +317,7 @@ const Add = () => {
                 value={date}
                 editable={false}
               />
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => setShowDatePicker(true)}
-              >
+              <TouchableOpacity style={styles.iconButton} onPress={() => setShowDatePicker(true)}>
                 <Icon name="calendar-outline" size={30} color="#000" />
               </TouchableOpacity>
               {showDatePicker && (
@@ -336,39 +330,41 @@ const Add = () => {
               )}
             </View>
 
-            {/* Type (Dropdown) */}
-            <Text style={styles.label}>Type:</Text>
-            <TouchableOpacity
-              style={styles.dropdown}
-              onPress={() => setShowTypeDropdown(!showTypeDropdown)}
-            >
-              <Text>{type}</Text>
-              <Icon name="chevron-down-outline" size={20} />
-            </TouchableOpacity>
-            {showTypeDropdown && (
-              <View style={styles.dropdownList}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setType('Expense');
-                    setShowTypeDropdown(false);
-                  }}
-                  style={styles.dropdownItem}
-                >
-                  <Text>Expense</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    setType('Income');
-                    setShowTypeDropdown(false);
-                  }}
-                  style={styles.dropdownItem}
-                >
-                  <Text>Income</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+{/* Income/Expense Type Selection */}
+<View style={styles.selectionContainer}>
+  <Text style={styles.label}>Type:</Text>
+  <TouchableOpacity style={styles.dropdown} onPress={() => setShowTypeDropdown(!showTypeDropdown)}>
+    <Text>{type}</Text>
+    <Icon name="chevron-down-outline" size={20} />
+  </TouchableOpacity>
+  {showTypeDropdown && (
+    <View style={styles.dropdownContainer}>
+      <TouchableOpacity
+        style={styles.dropdownItem}
+        onPress={() => {
+          setType('Expense');
+          setSelectedCategory(''); // Reset category when changing to Expense
+          setSelectedGoal(''); // Reset goal when changing to Expense
+          setShowTypeDropdown(false);
+        }}
+      >
+        <Text>Expense</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.dropdownItem}
+        onPress={() => {
+          setType('Income');
+          setSelectedCategory(''); // Reset category when changing to Income
+          setSelectedGoal(''); // Reset goal when changing to Income
+          setShowTypeDropdown(false);
+        }}
+      >
+        <Text>Income</Text>
+      </TouchableOpacity>
+    </View>
+  )}
+</View>
 
-            {/* Title */}
             <Text style={styles.label}>Title:</Text>
             <TextInput
               style={styles.input}
@@ -377,49 +373,76 @@ const Add = () => {
               onChangeText={setTitle}
             />
 
-            {/* Amount */}
             <Text style={styles.label}>Amount:</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter amount"
               value={amount}
-              onChangeText={setAmount}
               keyboardType="numeric"
+              onChangeText={setAmount}
             />
 
-            {/* Category (only for Expense) */}
+            {/* Expense Category Selection Container */}
             {type === 'Expense' && (
-              <>
-                <Text style={styles.label}>Category:</Text>
-                <View style={styles.categoriesContainer}>
-                <ScrollView
-                horizontal // Makes it horizontally scrollable
-                style={styles.categoriesContainer}>
-                {categories.map((category, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.categoryButton,
-                      selectedCategory === category && styles.selectedCategory,
-                    ]}
-                    onPress={() => setSelectedCategory(category)}>
-                    <Text>{category}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-                </View>
-              </>
-            )}
+  <>
+    <Text style={styles.label}>Category:</Text>
+    <ScrollView
+      horizontal={true}
+      showsHorizontalScrollIndicator={false}
+      style={styles.categoryScroll}
+    >
+      {categories.map((category, idx) => (
+        <TouchableOpacity
+          key={idx}
+          onPress={() => setSelectedCategory(category)}
+          style={[
+            styles.categoryButton,
+            { backgroundColor: category === selectedCategory ? '#FFD700' : '#f0f0f0' },
+          ]}
+        >
+          <Text style={styles.categoryText}>{category}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
 
-            {/* Actions */}
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={toggleModal}>
-                <Text style={styles.cancelButton}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave}>
-                <Text style={styles.okButton}>Save</Text>
-              </TouchableOpacity>
-              </View>
+
+                {/* Goal Dropdown Container */}
+                <View style={styles.selectionContainer}>
+      <Text style={styles.label}>Goal:</Text>
+      <TouchableOpacity
+        style={styles.dropdown}
+        onPress={() => setShowGoalDropdown(!showGoalDropdown)}
+      >
+        <Text>{selectedGoal || 'Select Goal'}</Text>{/* Show 'Select Goal' if none selected */}
+        <Icon name="chevron-down-outline" size={20} />
+      </TouchableOpacity>
+      {showGoalDropdown && (
+        <View style={styles.dropdownList}>
+        {goalList.map((goal, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.dropdownItem}
+            onPress={() => {
+              setSelectedGoal(goal.title); // Assuming goal.title represents the goal name
+              setShowGoalDropdown(false);
+            }}
+          >
+            <Text>{goal.title}</Text>
+          </TouchableOpacity>
+        ))}
+        </View>
+      )}
+    </View>
+  </>
+)}
+
+            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelButton} onPress={toggleModal}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -428,10 +451,9 @@ const Add = () => {
 };
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    padding: 16,
   },
   header: {
     alignItems: 'center',
@@ -440,7 +462,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ddd',
   },
   headerText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#444',
     textAlign: 'center',
     marginBottom: 10,
@@ -448,187 +470,144 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: '#4CAF50',
     paddingVertical: 10,
-    paddingHorizontal: 150,
+    paddingHorizontal: 120,
     borderRadius: 5,
   },
   addButtonText: {
-    color: '#fff',
+    color: '#ffff',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  transactionsContainer: {
-    padding: 20,
+  selectionContainer: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 8,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
+  dropdown: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
-  transactionItem: {
-    flexDirection: 'row', // Keep items in a row
-    justifyContent: 'space-between', // Distribute items evenly
-    alignItems: 'center', // Vertically center items
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  dropdownItem: {
+    padding: 10,
+  },
+  categoryScroll: {
+    marginBottom: 12,
+  },
+  categoryButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    margin: 4,
+    borderRadius: 5,
+  },
+  categoryText: {
+    fontSize: 14,
+  },
+  input: {
     padding: 10,
     borderRadius: 5,
-    marginBottom: 10,
-    backgroundColor: '#f9f9f9', // Optional: for better visibility
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 12,
   },
-  transactionText: {
-    flex: 1, // Allow text to take up remaining space
-    color: '#000',
-    fontSize: 16,
-    marginRight: 10, // Add space between text and amount
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 5,
+    marginTop: 16,
   },
-  transactionAmount: {
-    fontSize: 16,
+  saveButtonText: {
+    color: '#fff',
+    textAlign: 'center',
     fontWeight: 'bold',
-    textAlign: 'right', // Align amount to the right
-    color: '#000', // Default text color
   },
-  transactionActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 10,
+  cancelButton: {
+    backgroundColor: '#F44336',
+    paddingVertical: 12,
+    borderRadius: 5,
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     backgroundColor: '#fff',
+    width: '80%',
     padding: 20,
     borderRadius: 10,
-    width: '80%',
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center',
   },
   label: {
     fontSize: 14,
-    marginBottom: 5,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  input: {
-    width: '80%',
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    marginBottom: 15,
-  },
-  dropdown: {
+  datePickerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateInput: {
+    flex: 1,
     padding: 10,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 5,
-    marginBottom: 15,
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: '#444',
   },
   iconButton: {
     marginLeft: 10,
   },
-  modalActions: {
+  transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cancelButton: {
-    fontSize: 16,
-    color: '#FF6347',
-    fontWeight: 'bold',
-  },
-  okButton: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 10,
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 10,
-  },
-  dropdownList: {
-    borderWidth: 1,
-    borderRadius: 5,
     backgroundColor: '#fff',
-    marginTop: 5,
-  },
-  dropdownItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    marginVertical: 10,
-  },
-  categoryButton: {
-    backgroundColor: '#d4f7d4',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    marginRight: 10,
-  },
-  selectedCategory: {
-    backgroundColor: '#32CD32',
-  },
-  categoryText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  addCategoryButton: {
-    backgroundColor: '#e6e6e6',
-    borderRadius: 20,
-    width: 35,
-    height: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 8,
+    marginVertical: 6,
+    elevation: 2,
   },
   categoryColorSquare: {
-  width: 20,  // Adjust the size of the square
-  height: 20,  // Adjust the size of the square
-  borderRadius: 4,  // Optional: gives rounded corners to the square
-  marginRight: 15,  // Space between the square and title
-},
-datePickerContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  borderWidth: 1,
-  borderColor: '#ccc',
-  borderRadius: 10,
-  padding: 10,
-  marginBottom: 20,
-  backgroundColor: '#f9f9f9',  // Soft background for the date picker
-},
-dateInput: {
-  flex: 1,
-  fontSize: 16,
-  padding: 10,
-  borderWidth: 0,
-  color: '#333',
-  backgroundColor: '#f9f9f9', // Ensure input area matches the background
-},
-iconButton: {
-  marginLeft: 10,
-},
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    alignSelf: 'center',
+  },
+  transactionText: {
+    fontSize: 14,
+    alignSelf: 'center',
+  },
+  transactionAmount: {
+    fontSize: 14,
+    alignSelf: 'center',
+  },
+  transactionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });
 
 export default Add;

@@ -1,99 +1,134 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { router } from 'expo-router';
-import { supabase } from '../lib/supabase'; // Adjust the path if necessary
+import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, Alert, ImageBackground } from 'react-native';
+import { router } from 'expo-router'; // Expo Router for navigation
+import { supabase } from '../lib/supabase'; // Supabase client for backend communication
+import { Ionicons } from '@expo/vector-icons'; // Icons for the password visibility toggle
 
 const SignInScreen = () => {
+  // State variables to manage user input and toggle password visibility
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
+  // Function to handle user sign-in
   const handleSignIn = async () => {
     try {
+      // Supabase API call to sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      // Handle any errors from the API call
       if (error) {
         Alert.alert('Sign In Error', error.message);
         return;
       }
 
+      // Successful sign-in logic
       if (data.user) {
         Alert.alert('Success', 'Welcome back!');
-        router.navigate('dashboard'); // Navigate to the dashboard or main screen
+        router.navigate('dashboard'); // Navigate to the dashboard screen
       }
     } catch (err) {
+      // Catch and display unexpected errors
       Alert.alert('Sign In Failed', err.message || 'Unexpected error occurred.');
     }
   };
 
+  // Navigate to the SignUp screen
   const handleSignUp = () => {
     router.navigate('SignUp');
   };
 
+  // Navigate to the ForgotPassword screen
   const handleForgotPassword = () => {
     router.navigate('ForgotPassword');
   };
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/icon.png')} style={styles.splashImage} />
+    <ImageBackground
+      source={require('../assets/light.png')} // Background image for the screen
+      style={styles.background}
+    >
+      <View style={styles.container}>
+        {/* App Logo */}
+        <Image source={require('../assets/icon.png')} style={styles.splashImage} />
 
-      <Text style={styles.helloText}>Hello{"\n"}Sign in!</Text>
+        {/* Welcome Text */}
+        <Text style={styles.helloText}>Hello{"\n"}Sign in!</Text>
 
-      <View style={styles.whiteBackground} />
+        {/* White Background Panel */}
+        <View style={styles.whiteBackground} />
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your email"
-          placeholderTextColor="#000"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
-          placeholderTextColor="#000"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+        {/* Input Fields */}
+        <View style={styles.inputContainer}>
+          {/* Email Input */}
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            placeholderTextColor="#000"
+            keyboardType="email-address" // Keyboard optimized for email input
+            value={email}
+            onChangeText={setEmail} // Update email state
+          />
+
+          {/* Password Input */}
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="#000"
+            secureTextEntry={!showPassword} // Toggle password visibility
+            value={password}
+            onChangeText={setPassword} // Update password state
+          />
+          {/* Toggle Password Visibility */}
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword((prev) => !prev)} // Toggle the password visibility state
+          >
+            <Ionicons name={showPassword ? "eye" : "eye-off"} size={20} color="#000" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Forgot Password Link */}
+        <TouchableOpacity style={styles.forgotPasswordContainer} onPress={handleForgotPassword}>
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        {/* Sign In Button */}
+        <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
+          <Text style={styles.signInButtonText}>Sign In</Text>
+        </TouchableOpacity>
+
+        {/* Sign Up Link */}
+        <Text style={styles.dontHaveAccountText}>Don’t have an Account?</Text>
+        <TouchableOpacity style={styles.signUpContainer} onPress={handleSignUp}>
+          <Text style={styles.signUpText}>Sign Up</Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.forgotPasswordContainer} onPress={handleForgotPassword}>
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-        <Text style={styles.signInButtonText}>Sign In</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.dontHaveAccountText}>Don’t have an Account?</Text>
-      <TouchableOpacity style={styles.signUpContainer} onPress={handleSignUp}>
-        <Text style={styles.signUpText}>Sign Up</Text>
-      </TouchableOpacity>
-    </View>
+    </ImageBackground>
   );
 };
 
+// Styles for the SignIn screen
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    resizeMode: 'cover', // Ensures the background image covers the screen
+  },
   container: {
     flex: 1,
-    display: 'flex',
-    backgroundColor: '#61E224',
     justifyContent: 'center',
     alignItems: 'center',
   },
   splashImage: {
-    width: 50,
+    width: 79,
     height: 54,
     position: 'absolute',
-    top: 60,
+    top: 70,
     right: 70,
   },
   helloText: {
@@ -106,8 +141,8 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginBottom: 10,
     position: 'absolute',
-    top: 70,
-    left: 30,
+    top: 80,
+    left: 90,
   },
   whiteBackground: {
     width: '100%',
@@ -136,6 +171,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     marginBottom: 15,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 10,
+    top: 147,
   },
   forgotPasswordContainer: {
     marginTop: 10,

@@ -1,97 +1,107 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, ImageBackground } from 'react-native';
 import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
 const Create = () => {
   return (
-    <View style={styles.container}>
-     
-      <Image
-        source={require('../assets/icon.png')}
-        style={styles.splashImage}
-      />
-      <Text style={styles.fintrackText}>FINTRACK</Text>
+    <ImageBackground
+      source={require('../assets/light.png')} // Replace with your background image path
+      style={styles.background}
+    >
+      <View style={styles.container}>
+        {/* Centered Header Section */}
+        <View style={styles.centeredContent}>
+          <Image
+            source={require('../assets/icon.png')}
+            style={styles.logo}
+          />
+          <Text style={styles.title}>FINTRACK</Text>
+          <Text style={styles.welcomeText}>Welcome Back!</Text>
+        </View>
 
-    
-      <Text style={styles.welcomeBackText}>Welcome Back!</Text>
+        {/* Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.signInButton]}
+            onPress={() => router.navigate('SignIN')}
+          >
+            <Text style={styles.signInText}>Sign In</Text>
+          </TouchableOpacity>
 
-     
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.signInButton]}
-          onPress={() => router.navigate('SignIN')}
-        >
-          <Text style={styles.signInText}>Sign In!</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.signUpButton]}
+            onPress={() => router.navigate('SignUp')}
+          >
+            <Text style={styles.signUpText}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.button, styles.signUpButton]}
-          onPress={() => router.navigate('SignUp')}
-        >
-          <Text style={styles.signUpText}>Sign Up!</Text>
-        </TouchableOpacity>
+        {/* Motivational Text */}
+        <Text style={styles.motivationalText}>
+          Track or Stay Broke.{'\n'}Losers pick the second option.
+        </Text>
       </View>
-
-     
-      <Text style={styles.trackOrStayText}>
-        Track or Stay Broke.{'\n'}Losers pick the second option.
-      </Text>
-    </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    resizeMode: 'cover', // Ensures the background image covers the screen
+  },
   container: {
     flex: 1,
-    backgroundColor: '#61E224',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: height * 0.1,
   },
-  splashImage: {
-    width: width * 0.2,
-    height: width * 0.2,
-    resizeMode: 'contain',
-    marginTop: -height * 0.05,
+  centeredContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
   },
-  fintrackText: {
-    fontSize: width * 0.12,
+  logo: {
+    width: width * 0.25,
+    height: width * 0.25,
+    resizeMode: 'contain',
+  },
+  title: {
+    fontSize: width * 0.1,
     fontFamily: 'Staatliches',
     color: '#FFFFFF',
     textAlign: 'center',
   },
-  welcomeBackText: {
-    fontSize: width * 0.08,
+  welcomeText: {
+    fontSize: width * 0.1,
     fontFamily: 'SreeKrushnadevaraya',
-    color: '#000000',
+    color: '#000',
     textAlign: 'center',
-    marginVertical: height * 0.02,
   },
   buttonContainer: {
-    width: '100%',
+    width: '80%',
     alignItems: 'center',
+    marginBottom: height * 0.1,
   },
   button: {
-    width: width * 0.7,
+    width: '100%',
     height: height * 0.07,
-    borderRadius: width * 0.05,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: height * 0.02,
   },
   signInButton: {
-    backgroundColor: '#28A745',
+    backgroundColor: '#61E224',
+    borderColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#F3F3F3',
   },
   signUpButton: {
-    backgroundColor: '#F3F3F3',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#61E224',
+    borderWidth: 2,
   },
   signInText: {
     fontSize: width * 0.05,
@@ -101,12 +111,12 @@ const styles = StyleSheet.create({
   signUpText: {
     fontSize: width * 0.05,
     fontFamily: 'Staatliches',
-    color: '#000000',
+    color: '#61E224',
   },
-  trackOrStayText: {
-    fontSize: width * 0.05,
+  motivationalText: {
+    fontSize: width * 0.06,
     fontFamily: 'SreeKrushnadevaraya',
-    color: '#000000',
+    color: '#000',
     textAlign: 'center',
     paddingHorizontal: width * 0.1,
     lineHeight: height * 0.03,

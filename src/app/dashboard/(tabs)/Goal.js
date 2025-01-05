@@ -5,19 +5,16 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Alert,
   RefreshControl,
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'expo-router';
-import Icon from 'react-native-vector-icons/MaterialIcons'; // Importing vector icons
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const Goal = () => {
   const [goals, setGoals] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [editingGoal, setEditingGoal] = useState(null);
-  const [savedAmount, setSavedAmount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
@@ -59,24 +56,6 @@ const Goal = () => {
     }
   };
 
-  const handleEditGoal = async (goalId, updatedSavedAmount) => {
-    try {
-      const { error } = await supabase
-        .from('goal')
-        .update({ savedamount: updatedSavedAmount })
-        .eq('goalid', goalId);
-
-      if (error) {
-        Alert.alert('Error', 'Failed to update the goal.');
-        return;
-      }
-      setEditingGoal(null);
-      fetchGoals();
-    } catch (err) {
-      console.error('Unexpected error:', err);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchGoals();
@@ -84,7 +63,9 @@ const Goal = () => {
   };
 
   const renderGoalItem = ({ item }) => {
+    // Calculate remaining amount after expenses
     const remainingAmount = item.amount - (item.savedamount || 0);
+    // Calculate the progress percentage
     const progress = item.savedamount && item.amount ? (item.savedamount / item.amount) * 100 : 0;
 
     return (
@@ -92,9 +73,6 @@ const Goal = () => {
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <View style={styles.iconContainer}>
-            <TouchableOpacity onPress={() => setEditingGoal(item.goalid)}>
-              <Icon name="edit" size={24} color="#4CAF50" />
-            </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeleteGoal(item.goalid)}>
               <Icon name="delete" size={24} color="#f44336" />
             </TouchableOpacity>
@@ -104,28 +82,17 @@ const Goal = () => {
         <Text style={styles.date}>
           {item.startdate} - {item.enddate}
         </Text>
-        {editingGoal === item.goalid ? (
-          <TextInput
-            style={styles.input}
-            value={savedAmount.toString()}
-            keyboardType="numeric"
-            onChangeText={(value) => setSavedAmount(Number(value))}
-            onSubmitEditing={() => handleEditGoal(item.goalid, savedAmount)}
-          />
-        ) : (
-          <View>
-            <Text style={styles.amount}>
-              ₱{item.savedamount || 0} / ₱{item.amount}
-            </Text>
-            <Text style={styles.remaining}>
-              Remaining: ₱{remainingAmount.toFixed(2)}
-            </Text>
-          </View>
-        )}
+        <View>
+          <Text style={styles.amount}>
+            ₱{item.savedamount || 0} / ₱{item.amount}
+          </Text>
+          <Text style={styles.remaining}>
+            Remaining: ₱{remainingAmount.toFixed(2)}
+          </Text>
+        </View>
         <View style={styles.progressBarContainer}>
           <View
-            style={[styles.progressBar, { width: `${progress.toFixed(1)}%` }]}
-          />
+            style={[styles.progressBar, { width: `${progress.toFixed(1)}%` }]}/>
         </View>
         <Text style={styles.progressText}>
           {progress.toFixed(1)}% Saved
@@ -164,7 +131,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f0f4f8', // Lighter background for modern look
+    backgroundColor: '#f0f4f8',
   },
   card: {
     marginBottom: 20,
@@ -243,14 +210,6 @@ const styles = StyleSheet.create({
   noGoalsText: {
     textAlign: 'center',
     color: '#999',
-  },
-  input: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#4CAF50',
-    marginBottom: 15,
-    fontSize: 16,
-    padding: 5,
-    color: '#333',
   },
 });
 

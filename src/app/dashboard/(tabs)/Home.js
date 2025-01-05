@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { supabase } from '../../../lib/supabase';
@@ -11,12 +11,12 @@ const Home = () => {
   const [pieData, setPieData] = useState([]);
   const [balance, setBalance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(5);
 
   // Function to fetch transaction data from Supabase
   const fetchTransactionData = async () => {
     try {
       setRefreshing(true); // Start refreshing
-
   
       // Fetch the authenticated user's session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -32,20 +32,11 @@ const Home = () => {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', userId); // Filter by user_id
+        .eq('user_id', userId); 
   
       if (error) {
         console.error('Error fetching data from Supabase:', error);
         setRefreshing(false);
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*');
-  
-      if (error) {
-        console.error('Error fetching data from Supabase:', error);
-        setRefreshing(false); // End refreshing
-
         return;
       }
   
@@ -56,7 +47,6 @@ const Home = () => {
       if (Array.isArray(transactionsData)) {
         setTransactions(transactionsData);
   
-
         // Separate income and expenses
         const incomeTransactions = transactionsData.filter((t) => t.amount >= 0);
         const expenseTransactions = transactionsData.filter((t) => t.amount < 0);
@@ -65,12 +55,6 @@ const Home = () => {
         const categories = [...new Set(expenseTransactions.map((t) => t.category))];
         const chartData = categories.map((category) => {
           const total = expenseTransactions
-
-        // Aggregate data by category (both income and expense)
-        const categories = [...new Set(transactionsData.map((t) => t.category))];
-        const chartData = categories.map((category) => {
-          const total = transactionsData
-
             .filter((t) => t.category === category)
             .reduce((sum, t) => sum + t.amount, 0);
           return {
@@ -82,7 +66,6 @@ const Home = () => {
           };
         });
   
-
         // Set the chart data for expenses only
         setPieData(chartData);
   
@@ -92,12 +75,6 @@ const Home = () => {
   
         // Calculate the total balance (income - expenses)
         const totalBalance = totalIncome + totalExpenses; // Expenses are negative, so this effectively subtracts
-
-        // Set the chart data
-        setPieData(chartData);
-  
-        // Calculate the total balance (income - expenses)
-        const totalBalance = transactionsData.reduce((sum, t) => sum + t.amount, 0);
         setBalance(totalBalance);
       } else {
         console.error('Transactions data is not available or not an array');
@@ -126,27 +103,9 @@ const Home = () => {
   }, []);
 
   const handleNotificationPress = () => {
-    router.navigate('Notification');
-  };
-
-  const getCategoryColor = (category) => {
-    const colors = {
-      Groceries: '#79adcc',
-      Rent: '#ffc09f',
-      Shopping: '#ffee93',
-      Utilities: '#fcf5c7',
-      Other: '#adf7b6',
-      Default: '#EEE',
-    };
-    return colors[category] || '#ccc';
-  };
-
-  useEffect(() => {
-    fetchTransactionData();
-  }, []);
-
-  const handleNotificationPress = () => {
-    router.navigate('Notification');
+    console.log('Notification icon pressed');
+      router.navigate('Notification');
+      setUnreadCount(0);
   };
 
   const formatAmount = (amount) => (
@@ -155,75 +114,76 @@ const Home = () => {
     </Text>
   );
 
+  
+
   return (
-    <ScrollView
+    <FlatList
       style={styles.container}
+      data={transactions}
+      keyExtractor={(item) => item.id.toString()}
+      ListHeaderComponent={() => (
+        <View>
+          <TouchableOpacity style={styles.notificationContainer} onPress={handleNotificationPress}>
+            <Icon name="notifications-outline" size={30} color="#000" />
+              {unreadCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{unreadCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+
+          <View style={styles.chartContainer}>
+            <View style={styles.pieChartWrapper}>
+              <PieChart
+                data={pieData}  // This now contains only expense data
+                width={Dimensions.get('window').width - 100} // Smaller width
+                height={Dimensions.get('window').width - 200} // Same height as width for a circle
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                }}
+                accessor="amount"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute
+              />
+            </View>
+          </View>
+
+          <View style={styles.balanceContainer}>
+            <Text style={styles.balanceTitle}>Total Balance:</Text>
+            <Text style={styles.balanceAmount}>{balance.toLocaleString()}</Text>
+          </View>
+
+          <Text style={styles.transactionTitle}>Transactions</Text>
+        </View>
+      )}
+      renderItem={({ item }) => (
+        <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]}>
+          <Text style={styles.transactionCategory}>{item.category}</Text>
+          {formatAmount(item.amount)}
+        </View>
+      )}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={fetchTransactionData} // Trigger data fetch on refresh
         />
       }
-    >
-      <TouchableOpacity style={styles.notificationContainer} onPress={handleNotificationPress}>
-        <Icon name="notifications-outline" size={24} color="#000" />
-      </TouchableOpacity>
-
-      <View style={styles.chartContainer}>
-        <View style={styles.pieChartWrapper}>
-          <PieChart
-
-            data={pieData}  // This now contains only expense data
-
-            data={pieData}  // This now contains both income and expense data
-
-            width={Dimensions.get('window').width - 100} // Smaller width
-            height={Dimensions.get('window').width - 200} // Same height as width for a circle
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            }}
-            accessor="amount"
-            backgroundColor="transparent"
-            paddingLeft="15"
-            absolute
-          />
-        </View>
-      </View>
-
-      <View style={styles.balanceContainer}>
-        <Text style={styles.balanceTitle}>Total Balance:</Text>
-        <Text style={styles.balanceAmount}>{balance.toLocaleString()}</Text>
-      </View>
-
-      <Text style={styles.transactionTitle}>Transactions</Text>
-      <FlatList
-        data={transactions}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-
-          <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]} >
-
-          <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]}>
-
-            <Text style={styles.transactionCategory}>{item.category}</Text>
-            {formatAmount(item.amount)}
-          </View>
-        )}
-      />
-    </ScrollView>
+    />
   );
 };
 
+  
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
     padding: 16,
   },
-  notificationContainer: {
+  successMessageContainerContainer: {
     position: 'absolute',
     top: 10,
     right: 20,
@@ -257,6 +217,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#000',
   },
+  notificationContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5, // Adjust the position relative to the icon
+    right: -10, // Adjust the position relative to the icon
+    backgroundColor: 'red',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
