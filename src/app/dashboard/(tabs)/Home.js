@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { supabase } from '../../../lib/supabase';
@@ -11,7 +11,6 @@ const Home = () => {
   const [pieData, setPieData] = useState([]);
   const [balance, setBalance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(5);
 
   // Function to fetch transaction data from Supabase
   const fetchTransactionData = async () => {
@@ -25,6 +24,7 @@ const Home = () => {
         setRefreshing(false);
         return;
       }
+      
   
       const userId = sessionData.session.user.id;
   
@@ -32,7 +32,7 @@ const Home = () => {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', userId); 
+        .eq('user_id', userId); // Filter by user_id
   
       if (error) {
         console.error('Error fetching data from Supabase:', error);
@@ -92,7 +92,7 @@ const Home = () => {
       Rent: '#ffc09f',
       Shopping: '#ffee93',
       Utilities: '#fcf5c7',
-      Other: '#adf7b6',
+      Other: '#a6a6a6',
       Default: '#EEE',
     };
     return colors[category] || '#ccc';
@@ -103,9 +103,7 @@ const Home = () => {
   }, []);
 
   const handleNotificationPress = () => {
-    console.log('Notification icon pressed');
-      router.navigate('Notification');
-      setUnreadCount(0);
+    router.navigate('Notification');
   };
 
   const formatAmount = (amount) => (
@@ -114,76 +112,67 @@ const Home = () => {
     </Text>
   );
 
-  
-
   return (
-    <FlatList
+    <ScrollView
       style={styles.container}
-      data={transactions}
-      keyExtractor={(item) => item.id.toString()}
-      ListHeaderComponent={() => (
-        <View>
-          <TouchableOpacity style={styles.notificationContainer} onPress={handleNotificationPress}>
-            <Icon name="notifications-outline" size={30} color="#000" />
-              {unreadCount > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{unreadCount}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-
-          <View style={styles.chartContainer}>
-            <View style={styles.pieChartWrapper}>
-              <PieChart
-                data={pieData}  // This now contains only expense data
-                width={Dimensions.get('window').width - 100} // Smaller width
-                height={Dimensions.get('window').width - 200} // Same height as width for a circle
-                chartConfig={{
-                  backgroundColor: '#ffffff',
-                  backgroundGradientFrom: '#ffffff',
-                  backgroundGradientTo: '#ffffff',
-                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                }}
-                accessor="amount"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-              />
-            </View>
-          </View>
-
-          <View style={styles.balanceContainer}>
-            <Text style={styles.balanceTitle}>Total Balance:</Text>
-            <Text style={styles.balanceAmount}>{balance.toLocaleString()}</Text>
-          </View>
-
-          <Text style={styles.transactionTitle}>Transactions</Text>
-        </View>
-      )}
-      renderItem={({ item }) => (
-        <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]}>
-          <Text style={styles.transactionCategory}>{item.category}</Text>
-          {formatAmount(item.amount)}
-        </View>
-      )}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={fetchTransactionData} // Trigger data fetch on refresh
         />
       }
-    />
+    >
+      <TouchableOpacity style={styles.notificationContainer} onPress={handleNotificationPress}>
+        <Icon name="notifications-outline" size={24} color="#000" />
+      </TouchableOpacity>
+
+      <View style={styles.chartContainer}>
+        <View style={styles.pieChartWrapper}>
+          <PieChart
+            data={pieData}  // This now contains only expense data
+            width={Dimensions.get('window').width - 100} // Smaller width
+            height={Dimensions.get('window').width - 200} // Same height as width for a circle
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            }}
+            accessor="amount"
+            backgroundColor="transparent"
+            paddingLeft="15"
+            absolute
+          />
+        </View>
+      </View>
+
+      <View style={styles.balanceContainer}>
+        <Text style={styles.balanceTitle}>Total Balance:</Text>
+        <Text style={styles.balanceAmount}>{balance.toLocaleString()}</Text>
+      </View>
+
+      <Text style={styles.transactionTitle}>Transactions</Text>
+      <FlatList
+        data={transactions}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={[styles.transactionItem, { borderLeftColor: getCategoryColor(item.category) }]} >
+            <Text style={styles.transactionCategory}>{item.category}</Text>
+            {formatAmount(item.amount)}
+          </View>
+        )}
+      />
+    </ScrollView>
   );
 };
 
-  
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
     padding: 16,
   },
-  successMessageContainerContainer: {
+  notificationContainer: {
     position: 'absolute',
     top: 10,
     right: 20,
@@ -217,28 +206,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#000',
   },
-  notificationContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: -5, // Adjust the position relative to the icon
-    right: -10, // Adjust the position relative to the icon
-    backgroundColor: 'red',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
